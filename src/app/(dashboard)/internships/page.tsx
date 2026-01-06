@@ -1,11 +1,22 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
+import AddInternshipModal from "@/components/internships/AddInternshipModal";
+import EditInternshipModal, {
+  Internship,
+} from "@/components/internships/EditInternshipModal";
+
+/* ---------------- Constants ---------------- */
+
+const STATUSES = ["Applied", "Interview", "Offer", "Accepted", "Rejected"];
+
+/* ---------------- Page ---------------- */
 
 export default function InternshipsPage() {
-  const [internships, setInternships] = useState<any[]>([]);
+  const [internships, setInternships] = useState<Internship[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<Internship | null>(null);
 
   const isEmpty = internships.length === 0;
 
@@ -13,10 +24,11 @@ export default function InternshipsPage() {
     async function fetchInternships() {
       try {
         const res = await fetch("/api/internships");
-        const data = await res.json();
+        const data: Internship[] = await res.json();
+        await new Promise((r) => setTimeout(r, 300));
         setInternships(data);
-      } catch (error) {
-        console.error("Failed to fetch internships", error);
+      } catch (err) {
+        console.error(err);
       } finally {
         setIsLoading(false);
       }
@@ -25,23 +37,43 @@ export default function InternshipsPage() {
     fetchInternships();
   }, []);
 
+  const handleAdd = (internship: Internship) => {
+    setInternships((prev) => [internship, ...prev]);
+  };
+
+  const handleUpdate = (updated: Internship) => {
+    setInternships((prev) =>
+      prev.map((i) => (i.id === updated.id ? updated : i))
+    );
+  };
+
+  const handleDelete = async (id: string) => {
+    const ok = window.confirm("Delete this internship?");
+    if (!ok) return;
+
+    // optimistic UI
+    setInternships((prev) => prev.filter((i) => i.id !== id));
+
+    await fetch(`/api/internships/${id}`, {
+      method: "DELETE",
+    });
+  };
+
   return (
     <>
-      <div className="space-y-8">
+      <div className="space-y-8 text-slate-800">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-semibold tracking-tight">
-              Internships
-            </h1>
-            <p className="text-slate-500 mt-1">
+            <h1 className="text-3xl font-semibold">Internships</h1>
+            <p className="text-slate-600 mt-1">
               Track all your internship applications in one place
             </p>
           </div>
 
           <button
             onClick={() => setOpen(true)}
-            className="bg-slate-900 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-slate-800 transition"
+            className="bg-slate-900 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-slate-800"
           >
             + Add Internship
           </button>
@@ -55,44 +87,63 @@ export default function InternshipsPage() {
         ) : (
           <div className="bg-white border rounded-2xl shadow-sm overflow-hidden">
             <table className="w-full text-sm">
-              <thead className="bg-slate-50 border-b">
-                <tr className="text-left text-slate-500">
-                  <th className="px-6 py-4 font-medium">Role</th>
-                  <th className="px-6 py-4 font-medium">Company</th>
-                  <th className="px-6 py-4 font-medium">Location</th>
-                  <th className="px-6 py-4 font-medium">Stipend</th>
-                  <th className="px-6 py-4 font-medium">Status</th>
-                  <th className="px-6 py-4 font-medium">Applied On</th>
+              <thead className="bg-slate-50 border-b text-slate-600">
+                <tr>
+                  <th className="px-6 py-4 font-medium text-left">Role</th>
+                  <th className="px-6 py-4 font-medium text-left">Company</th>
+                  <th className="px-6 py-4 font-medium text-left">Location</th>
+                  <th className="px-6 py-4 font-medium text-left">Stipend</th>
+                  <th className="px-6 py-4 font-medium text-left">Status</th>
+                  <th className="px-6 py-4 font-medium text-left">
+                    Applied On
+                  </th>
+                  <th className="px-6 py-4 font-medium text-right">
+                    Actions
+                  </th>
                 </tr>
               </thead>
 
               <tbody>
-                {internships.map((item, idx) => (
+                {internships.map((item) => (
                   <tr
-                    key={idx}
-                    className="border-b last:border-none hover:bg-slate-50 transition"
+                    key={item.id}
+                    className="border-b last:border-none hover:bg-slate-50"
                   >
-                    <td className="px-6 py-4 font-medium text-slate-900">
-                      {item.role}
-                    </td>
-                    <td className="px-6 py-4 text-slate-600">
-                      {item.company}
-                    </td>
-                    <td className="px-6 py-4 text-slate-600">
-                      {item.location}
-                    </td>
-                    <td className="px-6 py-4 text-slate-600">
-                      {item.stipend
-                        ? `₹${Number(item.stipend).toLocaleString()}`
-                        : "—"}
-                    </td>
+                    <td className="px-6 py-4 font-medium">{item.role}</td>
+                    <td className="px-6 py-4">{item.company}</td>
+                    <td className="px-6 py-4">{item.location}</td>
                     <td className="px-6 py-4">
-                      <StatusBadge status={item.status} />
+                      {item.stipend ? `₹${item.stipend}` : "—"}
                     </td>
-                    <td className="px-6 py-4 text-slate-500">
+
+                    {/* INLINE STATUS */}
+                    <td className="px-6 py-4">
+                      <InlineStatusDropdown
+                        internship={item}
+                        onUpdate={handleUpdate}
+                      />
+                    </td>
+
+                    <td className="px-6 py-4">
                       {item.appliedOn
                         ? new Date(item.appliedOn).toLocaleDateString()
                         : "—"}
+                    </td>
+
+                    {/* ACTIONS */}
+                    <td className="px-6 py-4 text-right space-x-4">
+                      <button
+                        onClick={() => setEditing(item)}
+                        className="text-blue-600 hover:underline"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => handleDelete(item.id)}
+                        className="text-red-600 hover:underline"
+                      >
+                        Delete
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -102,203 +153,118 @@ export default function InternshipsPage() {
         )}
       </div>
 
-      {open && <AddInternshipModal onClose={() => setOpen(false)} />}
+      {/* Modals */}
+      {open && (
+        <AddInternshipModal
+          onClose={() => setOpen(false)}
+          onAdd={handleAdd}
+        />
+      )}
+
+      {editing && (
+        <EditInternshipModal
+          internship={editing}
+          onClose={() => setEditing(null)}
+          onSave={handleUpdate}
+        />
+      )}
     </>
   );
 }
 
-/* ---------------- Status Badge ---------------- */
+/* ---------------- Inline Status Dropdown ---------------- */
 
-function StatusBadge({ status }: { status: string }) {
+function InlineStatusDropdown({
+  internship,
+  onUpdate,
+}: {
+  internship: Internship;
+  onUpdate: (updated: Internship) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const btnRef = useRef<HTMLButtonElement | null>(null);
+  const [pos, setPos] = useState({ top: 0, left: 0 });
+
   const styles: Record<string, string> = {
-    Applied: "bg-blue-500/10 text-blue-600",
-    Interview: "bg-amber-500/10 text-amber-600",
-    Offer: "bg-emerald-500/10 text-emerald-600",
-    Rejected: "bg-red-500/10 text-red-600",
+    Applied: "bg-blue-500/10 text-blue-700",
+    Interview: "bg-amber-500/10 text-amber-700",
+    Offer: "bg-emerald-500/10 text-emerald-700",
+    Accepted: "bg-emerald-500/10 text-emerald-700",
+    Rejected: "bg-red-500/10 text-red-700",
   };
 
+  function openMenu() {
+    if (!btnRef.current) return;
+    const rect = btnRef.current.getBoundingClientRect();
+    setPos({
+      top: rect.bottom + 6,
+      left: rect.left,
+    });
+    setOpen(true);
+  }
+
+  async function changeStatus(status: string) {
+    setOpen(false);
+    onUpdate({ ...internship, status });
+
+    await fetch(`/api/internships/${internship.id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ status }),
+    });
+  }
+
   return (
-    <span
-      className={`px-3 py-1 rounded-full text-xs font-medium ${
-        styles[status]
-      }`}
-    >
-      {status}
-    </span>
+    <>
+      <button
+        ref={btnRef}
+        type="button"
+        onClick={() => (open ? setOpen(false) : openMenu())}
+        className={`px-3 py-1 rounded-full text-xs font-medium ${styles[internship.status]}`}
+      >
+        {internship.status}
+      </button>
+
+      {open && (
+        <div
+          className="fixed z-50 min-w-[9rem] rounded-lg bg-white shadow-lg ring-1 ring-black/5 overflow-hidden"
+          style={{ top: pos.top, left: pos.left }}
+        >
+          {STATUSES.map((status) => (
+            <button
+              key={status}
+              type="button"
+              onClick={() => changeStatus(status)}
+              className={`w-full px-3 py-2 text-left text-sm hover:bg-slate-100
+                ${
+                  internship.status === status
+                    ? "bg-slate-100 font-medium"
+                    : "text-slate-700"
+                }`}
+            >
+              {status}
+            </button>
+          ))}
+        </div>
+      )}
+    </>
   );
 }
 
-/* ---------------- Empty State ---------------- */
+/* ---------------- Helpers ---------------- */
+
+function InternshipsSkeleton() {
+  return <div className="h-40 bg-slate-100 rounded-xl animate-pulse" />;
+}
 
 function EmptyState({ onAdd }: { onAdd: () => void }) {
   return (
-    <div className="bg-white border rounded-2xl p-12 text-center shadow-sm">
-      <div className="mx-auto w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mb-4">
-        📄
-      </div>
-
-      <h3 className="text-lg font-semibold text-slate-900">
-        No internships yet
-      </h3>
-
-      <p className="text-slate-500 mt-2 max-w-sm mx-auto">
-        Start tracking your internship applications to stay organised and improve your chances.
-      </p>
-
+    <div className="bg-white border rounded-xl p-8 text-center">
       <button
         onClick={onAdd}
-        className="mt-6 bg-slate-900 text-white px-5 py-2 rounded-xl text-sm font-medium hover:bg-slate-800 transition"
+        className="bg-slate-900 text-white px-4 py-2 rounded-xl"
       >
-        Add your first internship
+        Add Internship
       </button>
-    </div>
-  );
-}
-
-/* ---------------- Skeleton Loader ---------------- */
-
-function InternshipsSkeleton() {
-  return (
-    <div className="bg-white border rounded-2xl shadow-sm p-6 space-y-4">
-      {[...Array(5)].map((_, i) => (
-        <div key={i} className="flex gap-6">
-          <div className="h-4 w-1/5 bg-slate-200 rounded animate-pulse" />
-          <div className="h-4 w-1/5 bg-slate-200 rounded animate-pulse" />
-          <div className="h-4 w-1/6 bg-slate-200 rounded animate-pulse" />
-          <div className="h-4 w-1/6 bg-slate-200 rounded animate-pulse" />
-          <div className="h-4 w-1/6 bg-slate-200 rounded animate-pulse" />
-        </div>
-      ))}
-    </div>
-  );
-}
-
-/* ---------------- Modal ---------------- */
-
-function AddInternshipModal({ onClose }: { onClose: () => void }) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div
-        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-        onClick={onClose}
-      />
-
-      <div className="relative bg-white w-full max-w-lg rounded-2xl shadow-xl p-6">
-        <h2 className="text-xl font-semibold">
-          Add Internship
-        </h2>
-
-        <form
-          className="mt-6 space-y-4"
-          onSubmit={async (e) => {
-            e.preventDefault();
-            const formData = new FormData(e.currentTarget);
-
-            await fetch("/api/internships", {
-              method: "POST",
-              body: JSON.stringify({
-                role: formData.get("role"),
-                company: formData.get("company"),
-                location: formData.get("location"),
-                stipend: formData.get("stipend"),
-                status: formData.get("status"),
-                appliedOn: formData.get("appliedOn"),
-              }),
-            });
-
-            onClose();
-            window.location.reload();
-          }}
-        >
-          <Input name="role" label="Role" />
-          <Input name="company" label="Company" />
-
-          <div className="grid grid-cols-2 gap-4">
-            <Input name="location" label="Location" />
-            <Input
-              name="stipend"
-              label="Monthly Stipend (₹)"
-              type="number"
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <Select
-              name="status"
-              label="Status"
-              options={["Applied", "Interview", "Offer", "Rejected"]}
-            />
-            <Input name="appliedOn" label="Applied Date" type="date" />
-          </div>
-
-          <div className="flex justify-end gap-3 pt-4">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 rounded-xl text-sm text-slate-600 hover:bg-slate-100"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="px-5 py-2 rounded-xl text-sm font-medium bg-slate-900 text-white hover:bg-slate-800"
-            >
-              Save Internship
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-}
-
-/* ---------------- Inputs ---------------- */
-
-function Input({
-  label,
-  name,
-  type = "text",
-}: {
-  label: string;
-  name: string;
-  type?: string;
-}) {
-  return (
-    <div className="space-y-1">
-      <label className="text-sm font-medium text-slate-700">
-        {label}
-      </label>
-      <input
-        name={name}
-        type={type}
-        className="w-full px-3 py-2 rounded-xl border border-slate-200 focus:ring-2 focus:ring-slate-900 outline-none"
-      />
-    </div>
-  );
-}
-
-function Select({
-  label,
-  name,
-  options,
-}: {
-  label: string;
-  name: string;
-  options: string[];
-}) {
-  return (
-    <div className="space-y-1">
-      <label className="text-sm font-medium text-slate-700">
-        {label}
-      </label>
-      <select
-        name={name}
-        className="w-full px-3 py-2 rounded-xl border border-slate-200 focus:ring-2 focus:ring-slate-900 outline-none"
-      >
-        {options.map((opt) => (
-          <option key={opt}>{opt}</option>
-        ))}
-      </select>
     </div>
   );
 }

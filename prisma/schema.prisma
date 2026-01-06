@@ -29,6 +29,7 @@ model Internship {
   appliedOn DateTime
 
   stipend   Int?
+  notes     String?
 
   userId    String
   user      User     @relation(fields: [userId], references: [id])

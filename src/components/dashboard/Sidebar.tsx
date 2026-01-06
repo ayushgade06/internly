@@ -7,9 +7,16 @@ import {
   Briefcase,
   ClipboardList,
   Settings,
+  LucideIcon,
 } from "lucide-react";
 
-const navItems = [
+interface NavItem {
+  name: string;
+  href: string;
+  icon: LucideIcon;
+}
+
+const navItems: NavItem[] = [
   {
     name: "Dashboard",
     href: "/dashboard",
@@ -39,7 +46,7 @@ export default function Sidebar() {
     <aside className="w-64 bg-white border-r hidden md:flex flex-col">
       {/* Logo */}
       <div className="h-16 flex items-center px-6 border-b">
-        <span className="text-lg font-semibold tracking-tight">
+        <span className="text-lg font-semibold tracking-tight text-slate-800">
           Internly
         </span>
       </div>

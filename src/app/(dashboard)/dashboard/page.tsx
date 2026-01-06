@@ -3,7 +3,7 @@ export default function DashboardPage() {
     <div className="space-y-10">
       {/* Header */}
       <section className="flex flex-col gap-1">
-        <h1 className="text-3xl font-semibold tracking-tight text-slate-900">
+        <h1 className="text-3xl font-semibold tracking-tight text-slate-900 z-10">
           Dashboard
         </h1>
         <p className="text-slate-500">
