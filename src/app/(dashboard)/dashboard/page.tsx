@@ -1,9 +1,23 @@
-export default function DashboardPage() {
+import { getDashboardData } from "./actions/getDashboardData";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import Link from "next/link";
+
+export default async function DashboardPage() {
+  const session = await getServerSession(authOptions);
+
+  if (!session?.user?.email) {
+    return null;
+  }
+
+  const { stats, recentApplications } =
+    await getDashboardData(session.user.email);
+
   return (
     <div className="space-y-10">
       {/* Header */}
       <section className="flex flex-col gap-1">
-        <h1 className="text-3xl font-semibold tracking-tight text-slate-900 z-10">
+        <h1 className="text-3xl font-semibold tracking-tight text-slate-900">
           Dashboard
         </h1>
         <p className="text-slate-500">
@@ -15,21 +29,21 @@ export default function DashboardPage() {
       <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <MetricCard
           title="Applications Sent"
-          value="12"
-          description="+3 this week"
+          value={stats.applicationsThisWeek.toString()}
+          description="This week"
           accent="blue"
         />
 
         <MetricCard
           title="Interviews"
-          value="3"
-          description="2 upcoming"
+          value={stats.interviewsUpcoming.toString()}
+          description="Upcoming"
           accent="amber"
         />
 
         <MetricCard
           title="Offers"
-          value="1"
+          value={stats.offersAwaiting.toString()}
           description="Awaiting response"
           accent="emerald"
         />
@@ -40,25 +54,26 @@ export default function DashboardPage() {
         {/* Recent Activity */}
         <div className="lg:col-span-2 bg-white rounded-2xl border p-6 shadow-sm">
           <h3 className="text-lg font-semibold mb-4">
-            Recent Activity
+            Recently Applied
           </h3>
 
           <div className="space-y-4">
-            <ActivityItem
-              title="Applied to Software Intern"
-              company="Stripe"
-              time="2 days ago"
-            />
-            <ActivityItem
-              title="Interview Scheduled"
-              company="Google"
-              time="5 days ago"
-            />
-            <ActivityItem
-              title="Application Viewed"
-              company="Microsoft"
-              time="1 week ago"
-            />
+            {recentApplications.length === 0 ? (
+              <p className="text-sm text-slate-500">
+                No applications yet
+              </p>
+            ) : (
+              recentApplications.map((app) => (
+                <ActivityItem
+                  key={app.id}
+                  title={app.role}
+                  company={app.company}
+                  time={new Date(app.appliedOn).toLocaleDateString(
+                    "en-IN"
+                  )}
+                />
+              ))
+            )}
           </div>
         </div>
 
@@ -73,9 +88,12 @@ export default function DashboardPage() {
             </p>
           </div>
 
-          <button className="mt-6 bg-white text-slate-900 rounded-xl px-4 py-2 font-medium hover:bg-slate-100 transition">
+          <Link
+            href="/internships"
+            className="mt-6 inline-flex justify-center bg-white text-slate-900 rounded-xl px-4 py-2 font-medium hover:bg-slate-100 transition"
+          >
             Add Internship
-          </button>
+          </Link>
         </div>
       </section>
     </div>

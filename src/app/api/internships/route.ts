@@ -3,6 +3,9 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
+// 🔥 Disable caching for this route (VERY IMPORTANT)
+export const dynamic = "force-dynamic";
+
 /* ================= POST ================= */
 
 export async function POST(req: Request) {
@@ -15,7 +18,7 @@ export async function POST(req: Request) {
   const body = await req.json();
   const { role, company, location, status, appliedOn, stipend } = body;
 
-  // 🔒 Ensure user exists
+  // Ensure user exists in DB
   const user = await prisma.user.upsert({
     where: { email: session.user.email },
     update: {},
@@ -26,7 +29,6 @@ export async function POST(req: Request) {
     },
   });
 
-  // ✅ NO connect() ANYWHERE
   const internship = await prisma.internship.create({
     data: {
       role,
@@ -35,11 +37,15 @@ export async function POST(req: Request) {
       status,
       appliedOn: new Date(appliedOn),
       stipend: stipend ? Number(stipend) : null,
-      userId: user.id, // ← THIS IS CRITICAL
+      userId: user.id,
     },
   });
 
-  return NextResponse.json(internship);
+  return NextResponse.json(internship, {
+    headers: {
+      "Cache-Control": "no-store",
+    },
+  });
 }
 
 /* ================= GET ================= */
@@ -60,5 +66,9 @@ export async function GET() {
     orderBy: { createdAt: "desc" },
   });
 
-  return NextResponse.json(internships);
+  return NextResponse.json(internships, {
+    headers: {
+      "Cache-Control": "no-store", // 🔥 prevents stale data
+    },
+  });
 }

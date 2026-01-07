@@ -44,21 +44,24 @@ export default function EditInternshipModal({
     setForm((p) => ({ ...p, [e.target.name]: e.target.value }));
   }
 
-  function handleSubmit(e: FormEvent) {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
 
-    onSave({
-      ...internship,
-      ...form,
-      stipend: form.stipend ? Number(form.stipend) : null,
-      appliedOn: form.appliedOn || null,
-    });
-
-    fetch(`/api/internships/${internship.id}`, {
+    const res = await fetch(`/api/internships/${internship.id}`, {
       method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
       body: JSON.stringify(form),
     });
 
+    if (!res.ok) {
+      alert("Failed to update internship");
+      return;
+    }
+
+    const updated = await res.json();
+    onSave(updated);
     onClose();
   }
 
@@ -73,21 +76,31 @@ export default function EditInternshipModal({
         onSubmit={handleSubmit}
         className="relative bg-white w-full max-w-lg rounded-2xl shadow-xl p-6 space-y-4 text-slate-800"
       >
-        <h2 className="text-xl font-semibold">
-          Edit Internship
-        </h2>
+        <h2 className="text-xl font-semibold">Edit Internship</h2>
 
         <Input label="Role" name="role" value={form.role} onChange={handleChange} />
         <Input label="Company" name="company" value={form.company} onChange={handleChange} />
 
         <div className="grid grid-cols-2 gap-4">
           <Input label="Location" name="location" value={form.location} onChange={handleChange} />
-          <Input label="Stipend (₹)" name="stipend" type="number" value={form.stipend} onChange={handleChange} />
+          <Input
+            label="Stipend (₹)"
+            name="stipend"
+            type="number"
+            value={form.stipend}
+            onChange={handleChange}
+          />
         </div>
 
         <div className="grid grid-cols-2 gap-4">
           <Select label="Status" name="status" value={form.status} onChange={handleChange} />
-          <Input label="Applied Date" name="appliedOn" type="date" value={form.appliedOn} onChange={handleChange} />
+          <Input
+            label="Applied Date"
+            name="appliedOn"
+            type="date"
+            value={form.appliedOn}
+            onChange={handleChange}
+          />
         </div>
 
         <Textarea
@@ -110,7 +123,7 @@ export default function EditInternshipModal({
   );
 }
 
-/* ---------- Inputs (text only, no border color changes) ---------- */
+/* ---------- Inputs ---------- */
 
 function Input({ label, ...props }: any) {
   return (
@@ -118,7 +131,7 @@ function Input({ label, ...props }: any) {
       <label className="text-sm font-medium text-slate-800">{label}</label>
       <input
         {...props}
-        className="w-full px-3 py-2 rounded-xl border border-slate-300 text-slate-800"
+        className="w-full px-3 py-2 rounded-xl border border-slate-300"
       />
     </div>
   );
@@ -130,7 +143,7 @@ function Select({ label, ...props }: any) {
       <label className="text-sm font-medium text-slate-800">{label}</label>
       <select
         {...props}
-        className="w-full px-3 py-2 rounded-xl border border-slate-300 text-slate-800"
+        className="w-full px-3 py-2 rounded-xl border border-slate-300"
       >
         {["Applied", "Interview", "Offer", "Accepted", "Rejected"].map((s) => (
           <option key={s}>{s}</option>
@@ -147,7 +160,7 @@ function Textarea({ label, ...props }: any) {
       <textarea
         {...props}
         rows={4}
-        className="w-full px-3 py-2 rounded-xl border border-slate-300 text-slate-800"
+        className="w-full px-3 py-2 rounded-xl border border-slate-300"
       />
     </div>
   );
