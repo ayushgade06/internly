@@ -1,0 +1,16 @@
+{
+  "name": "internship-tracker-extension",
+  "version": "2.0.0",
+  "description": "Automatically detects and tracks internship/job applications",
+  "scripts": {
+    "build": "tsc && npm run copy && npm run update-manifest",
+    "copy": "node scripts/copy-files.js",
+    "update-manifest": "node scripts/update-manifest.js",
+    "watch": "tsc --watch"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.0.268",
+    "typescript": "^5.3.3"
+  }
+}
+

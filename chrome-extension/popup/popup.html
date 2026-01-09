@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Internship Tracker</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <header class="header">
+      <h1>Internship Tracker</h1>
+      <div class="status-indicator" id="statusIndicator">
+        <span class="status-dot" id="statusDot"></span>
+        <span id="statusText">Checking...</span>
+      </div>
+    </header>
+
+    <!-- Recent Detection -->
+    <section class="section" id="recentSection" style="display: none;">
+      <h2>Recent Detection</h2>
+      <div class="detection-card" id="recentCard">
+        <div class="detection-header">
+          <span class="platform-badge" id="platformBadge">LinkedIn</span>
+          <span class="status-badge" id="syncStatus">Synced</span>
+        </div>
+        <div class="detection-body">
+          <div class="detection-item">
+            <strong>Company:</strong>
+            <span id="recentCompany">-</span>
+          </div>
+          <div class="detection-item">
+            <strong>Role:</strong>
+            <span id="recentRole">-</span>
+          </div>
+          <div class="detection-item">
+            <strong>Applied:</strong>
+            <span id="recentDate">-</span>
+          </div>
+        </div>
+        <div class="detection-actions">
+          <button class="btn btn-secondary" id="editBtn">Edit</button>
+          <button class="btn btn-danger" id="undoBtn">Undo</button>
+          <button class="btn btn-primary" id="syncBtn">Sync</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Stats -->
+    <section class="section">
+      <h2>Statistics</h2>
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-value" id="totalCount">0</div>
+          <div class="stat-label">Total</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="syncedCount">0</div>
+          <div class="stat-label">Synced</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="pendingCount">0</div>
+          <div class="stat-label">Pending</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Actions -->
+    <section class="section">
+      <div class="actions">
+        <button class="btn btn-primary btn-full" id="syncAllBtn">Sync All</button>
+        <button class="btn btn-secondary btn-full" id="settingsBtn">Settings</button>
+      </div>
+    </section>
+
+    <!-- Settings Panel (hidden by default) -->
+    <section class="section" id="settingsSection" style="display: none;">
+      <h2>Settings</h2>
+      <div class="setting-item">
+        <label>
+          <input type="checkbox" id="enabledToggle" checked>
+          Enable Auto-Detection
+        </label>
+      </div>
+      <div class="setting-item">
+        <label>
+          <input type="checkbox" id="debugToggle">
+          Debug Mode
+        </label>
+      </div>
+      <div class="setting-item">
+        <label>
+          API URL:
+          <input type="text" id="apiUrlInput" placeholder="http://localhost:3000">
+        </label>
+      </div>
+      <div class="setting-item">
+        <label>Enabled Platforms:</label>
+        <div class="platform-checkboxes">
+          <label><input type="checkbox" class="platform-checkbox" value="linkedin" checked> LinkedIn</label>
+          <label><input type="checkbox" class="platform-checkbox" value="internshala" checked> Internshala</label>
+          <label><input type="checkbox" class="platform-checkbox" value="greenhouse" checked> Greenhouse</label>
+          <label><input type="checkbox" class="platform-checkbox" value="lever" checked> Lever</label>
+          <label><input type="checkbox" class="platform-checkbox" value="workday" checked> Workday</label>
+        </div>
+      </div>
+      <button class="btn btn-primary btn-full" id="saveSettingsBtn">Save Settings</button>
+    </section>
+
+    <!-- Empty State -->
+    <section class="section" id="emptyState">
+      <p class="empty-text">No applications detected yet.</p>
+      <p class="empty-subtext">Apply to a job on LinkedIn, Internshala, or other supported platforms to get started.</p>
+    </section>
+  </div>
+
+  <script type="module" src="popup.js"></script>
+</body>
+</html>
