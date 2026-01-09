@@ -19,8 +19,6 @@ export async function PATCH(
   }
 
   const body = await req.json();
-
-  // ✅ Build update data safely (PATCH = partial update)
   const data: Record<string, any> = {};
 
   if (body.role !== undefined) data.role = body.role;
@@ -34,9 +32,11 @@ export async function PATCH(
   }
 
   if (body.appliedOn !== undefined) {
-    data.appliedOn = body.appliedOn
-      ? new Date(body.appliedOn)
-      : null;
+    data.appliedOn = body.appliedOn ? new Date(body.appliedOn) : null;
+  }
+
+  if (body.followUpOn !== undefined) {
+    data.followUpOn = body.followUpOn ? new Date(body.followUpOn) : null;
   }
 
   const updated = await prisma.internship.update({
@@ -62,9 +62,7 @@ export async function DELETE(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  await prisma.internship.delete({
-    where: { id },
-  });
+  await prisma.internship.delete({ where: { id } });
 
   return NextResponse.json(
     { success: true },

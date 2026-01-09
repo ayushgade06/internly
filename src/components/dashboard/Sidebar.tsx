@@ -6,7 +6,8 @@ import {
   LayoutDashboard,
   Briefcase,
   ClipboardList,
-  Settings,
+  MessageSquareText,
+  BarChart3,
   LucideIcon,
 } from "lucide-react";
 
@@ -33,9 +34,14 @@ const navItems: NavItem[] = [
     icon: ClipboardList,
   },
   {
-    name: "Settings",
-    href: "/settings",
-    icon: Settings,
+    name: "Interviews",
+    href: "/interviews",
+    icon: MessageSquareText,
+  },
+  {
+    name: "Analytics",
+    href: "/analytics",
+    icon: BarChart3,
   },
 ];
 

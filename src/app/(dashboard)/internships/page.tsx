@@ -5,7 +5,7 @@ import AddInternshipModal from "@/components/internships/AddInternshipModal";
 import EditInternshipModal, {
   Internship,
 } from "@/components/internships/EditInternshipModal";
-import { Pencil, Trash2 } from "lucide-react";
+import { Pencil, Trash2, FileText } from "lucide-react";
 
 const STATUSES = ["Applied", "Interview", "Offer", "Accepted", "Rejected"];
 
@@ -19,11 +19,20 @@ const STATUS_STYLES: Record<string, string> = {
   Rejected: "bg-red-500/10 text-red-700",
 };
 
+/* ================= Page ================= */
+
 export default function InternshipsPage() {
   const [internships, setInternships] = useState<Internship[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Internship | null>(null);
+
+  // Notes hover state (rendered outside table)
+  const [hoveredNotes, setHoveredNotes] = useState<{
+    text: string;
+    top: number;
+    left: number;
+  } | null>(null);
 
   useEffect(() => {
     async function fetchInternships() {
@@ -69,6 +78,22 @@ export default function InternshipsPage() {
     setInternships((prev) => prev.filter((i) => i.id !== id));
   };
 
+  function showNotes(
+    e: React.MouseEvent<SVGSVGElement>,
+    notes: string
+  ) {
+    const rect = e.currentTarget.getBoundingClientRect();
+    setHoveredNotes({
+      text: notes,
+      top: rect.bottom + 8,
+      left: rect.left,
+    });
+  }
+
+  function hideNotes() {
+    setHoveredNotes(null);
+  }
+
   return (
     <>
       <div className="space-y-8 text-slate-800">
@@ -112,6 +137,7 @@ export default function InternshipsPage() {
                   <th className="px-6 py-4 text-left">Stipend</th>
                   <th className="px-6 py-4 text-left">Status</th>
                   <th className="px-6 py-4 text-left">Applied On</th>
+                  <th className="px-6 py-4 text-left">Notes</th>
                   <th className="px-6 py-4 text-right">Actions</th>
                 </tr>
               </thead>
@@ -122,7 +148,9 @@ export default function InternshipsPage() {
                     key={item.id}
                     className="border-b last:border-none hover:bg-slate-50"
                   >
-                    <td className="px-6 py-4 font-medium">{item.role}</td>
+                    <td className="px-6 py-4 font-medium">
+                      {item.role}
+                    </td>
                     <td className="px-6 py-4">{item.company}</td>
                     <td className="px-6 py-4">{item.location}</td>
                     <td className="px-6 py-4">
@@ -139,8 +167,26 @@ export default function InternshipsPage() {
 
                     <td className="px-6 py-4">
                       {item.appliedOn
-                        ? new Date(item.appliedOn).toLocaleDateString()
+                        ? new Date(item.appliedOn).toLocaleDateString(
+                            "en-IN"
+                          )
                         : "—"}
+                    </td>
+
+                    {/* Notes */}
+                    <td className="px-6 py-4">
+                      {item.notes ? (
+                        <FileText
+                          size={16}
+                          onMouseEnter={(e) =>
+                            showNotes(e, item.notes!)
+                          }
+                          onMouseLeave={hideNotes}
+                          className="text-slate-500 hover:text-slate-700 cursor-pointer"
+                        />
+                      ) : (
+                        "—"
+                      )}
                     </td>
 
                     {/* Actions */}
@@ -149,7 +195,6 @@ export default function InternshipsPage() {
                         <button
                           onClick={() => setEditing(item)}
                           className="p-2 rounded-lg hover:bg-slate-100 text-slate-600"
-                          title="Edit"
                         >
                           <Pencil size={16} />
                         </button>
@@ -157,7 +202,6 @@ export default function InternshipsPage() {
                         <button
                           onClick={() => handleDelete(item.id)}
                           className="p-2 rounded-lg hover:bg-red-50 text-red-600"
-                          title="Delete"
                         >
                           <Trash2 size={16} />
                         </button>
@@ -171,9 +215,30 @@ export default function InternshipsPage() {
         )}
       </div>
 
+      {/* Notes Hover Card */}
+      {hoveredNotes && (
+        <div
+          style={{
+            top: hoveredNotes.top,
+            left: hoveredNotes.left,
+          }}
+          className="fixed z-[9999] w-80 rounded-xl bg-white border shadow-xl p-4"
+        >
+          <p className="text-xs font-medium text-slate-500 mb-1">
+            Notes
+          </p>
+          <p className="text-sm text-slate-800 whitespace-pre-wrap">
+            {hoveredNotes.text}
+          </p>
+        </div>
+      )}
+
       {/* Modals */}
       {open && (
-        <AddInternshipModal onClose={() => setOpen(false)} onAdd={handleAdd} />
+        <AddInternshipModal
+          onClose={() => setOpen(false)}
+          onAdd={handleAdd}
+        />
       )}
 
       {editing && (

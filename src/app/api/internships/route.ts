@@ -3,7 +3,6 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
-// 🔥 Disable caching for this route (VERY IMPORTANT)
 export const dynamic = "force-dynamic";
 
 /* ================= POST ================= */
@@ -15,10 +14,21 @@ export async function POST(req: Request) {
     return new NextResponse("Unauthorized", { status: 401 });
   }
 
-  const body = await req.json();
-  const { role, company, location, status, appliedOn, stipend } = body;
+  const {
+    role,
+    company,
+    location,
+    status,
+    appliedOn,
+    followUpOn,
+    stipend,
+    notes,
+  } = await req.json();
 
-  // Ensure user exists in DB
+  if (!appliedOn) {
+    return new NextResponse("Applied date is required", { status: 400 });
+  }
+
   const user = await prisma.user.upsert({
     where: { email: session.user.email },
     update: {},
@@ -36,15 +46,15 @@ export async function POST(req: Request) {
       location,
       status,
       appliedOn: new Date(appliedOn),
+      followUpOn: followUpOn ? new Date(followUpOn) : null,
       stipend: stipend ? Number(stipend) : null,
+      notes,
       userId: user.id,
     },
   });
 
   return NextResponse.json(internship, {
-    headers: {
-      "Cache-Control": "no-store",
-    },
+    headers: { "Cache-Control": "no-store" },
   });
 }
 
@@ -58,17 +68,11 @@ export async function GET() {
   }
 
   const internships = await prisma.internship.findMany({
-    where: {
-      user: {
-        email: session.user.email,
-      },
-    },
+    where: { user: { email: session.user.email } },
     orderBy: { createdAt: "desc" },
   });
 
   return NextResponse.json(internships, {
-    headers: {
-      "Cache-Control": "no-store", // 🔥 prevents stale data
-    },
+    headers: { "Cache-Control": "no-store" },
   });
 }

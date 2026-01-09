@@ -7,7 +7,11 @@ export default async function DashboardPage() {
   const session = await getServerSession(authOptions);
 
   if (!session?.user?.email) {
-    return null;
+    return (
+      <div className="p-6 text-slate-500">
+        You must be logged in to view the dashboard.
+      </div>
+    );
   }
 
   const { stats, recentApplications } =
@@ -68,9 +72,7 @@ export default async function DashboardPage() {
                   key={app.id}
                   title={app.role}
                   company={app.company}
-                  time={new Date(app.appliedOn).toLocaleDateString(
-                    "en-IN"
-                  )}
+                  time={new Date(app.appliedOn).toLocaleDateString("en-IN")}
                 />
               ))
             )}
