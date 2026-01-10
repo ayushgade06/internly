@@ -8,19 +8,32 @@
   <body>
     <div class="container">
       <h1>Internly</h1>
-      <p id="confidence"></p>
 
-      <form id="applicationForm">
-        <label>Company <input id="company" /></label>
-        <label>Role <input id="role" /></label>
-        <label>Stipend <input id="stipend" /></label>
-        <label>Description <textarea id="description"></textarea></label>
+      <button id="toggleViewBtn">View Saved Applications</button>
 
-        <button type="submit">Save</button>
-        <button type="button" id="ignoreBtn">Ignore</button>
-      </form>
+      <!-- NEW APPLICATION VIEW -->
+      <div id="newView">
+        <p id="confidence"></p>
+        <p id="warning"></p>
 
-      <p id="emptyState" hidden>No application detected.</p>
+        <form id="applicationForm">
+          <label>Company <input id="company" /></label>
+          <label>Role <input id="role" /></label>
+          <label>Stipend <input id="stipend" /></label>
+          <label>Description <textarea id="description"></textarea></label>
+
+          <button type="submit">Save</button>
+          <button type="button" id="ignoreBtn">Ignore</button>
+        </form>
+
+        <p id="emptyState" hidden>No application detected.</p>
+      </div>
+
+      <!-- SAVED APPLICATIONS VIEW -->
+      <div id="savedView" hidden>
+        <h2>Saved Applications</h2>
+        <ul id="savedList"></ul>
+      </div>
     </div>
 
     <script src="popup.js"></script>
