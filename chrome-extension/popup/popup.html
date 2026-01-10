@@ -3,31 +3,25 @@
   <head>
     <meta charset="UTF-8" />
     <title>Internly</title>
-    <style>
-      body {
-        font-family: Arial, sans-serif;
-        padding: 12px;
-        width: 220px;
-      }
-      h1 {
-        font-size: 18px;
-        margin-bottom: 8px;
-      }
-      p {
-        font-size: 14px;
-        margin-bottom: 12px;
-      }
-      button {
-        width: 100%;
-        padding: 6px;
-        cursor: pointer;
-      }
-    </style>
+    <link rel="stylesheet" href="popup.css" />
   </head>
   <body>
-    <h1>Internly</h1>
-    <p>Extension active</p>
-    <button id="testBtn">Test Connection</button>
+    <div class="container">
+      <h1>Internly</h1>
+      <p id="confidence"></p>
+
+      <form id="applicationForm">
+        <label>Company <input id="company" /></label>
+        <label>Role <input id="role" /></label>
+        <label>Stipend <input id="stipend" /></label>
+        <label>Description <textarea id="description"></textarea></label>
+
+        <button type="submit">Save</button>
+        <button type="button" id="ignoreBtn">Ignore</button>
+      </form>
+
+      <p id="emptyState" hidden>No application detected.</p>
+    </div>
 
     <script src="popup.js"></script>
   </body>

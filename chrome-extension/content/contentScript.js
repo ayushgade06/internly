@@ -102,7 +102,6 @@
 
   function extractRole() {
     try {
-      // 1️⃣ URL slug (PRIMARY – Stripe / Greenhouse)
       const path = window.location.pathname;
       const match =
         path.match(/listing\/([^\/]+)/i) ||
@@ -113,7 +112,6 @@
         return titleCase(match[1].replace(/-/g, " "));
       }
 
-      // 2️⃣ Headings fallback
       const headings = document.querySelectorAll("h1, h2, h3");
       for (const h of headings) {
         const text = safeText(h, 200);
@@ -179,6 +177,7 @@
   // Runner
   // -------------------------------
   let lastConfidence = -1;
+  let hasSentApplication = false; // ✅ NEW (send-once guard)
 
   function runDetection() {
     const confidence = detectApplicationPage();
@@ -191,11 +190,31 @@
         `[Internly][Detection] Confidence: ${confidence} → ${level}`
       );
 
-      if (confidence >= 60) {
+      if (confidence >= 60 && !hasSentApplication) {
+        const extractedApplication = extractApplicationData();
+
         console.log(
           "[Internly][Extracted Application]",
-          extractApplicationData()
+          extractedApplication
         );
+
+        // ✅ MV3-safe message (forces background wake)
+        chrome.runtime.sendMessage(
+          {
+            type: "APPLICATION_EXTRACTED",
+            payload: {
+              ...extractedApplication,
+              confidence,
+            },
+          },
+          () => {
+            console.log(
+              "[Internly][Content] Background acknowledged"
+            );
+          }
+        );
+
+        hasSentApplication = true;
       }
 
       lastConfidence = confidence;

@@ -2,7 +2,6 @@ body {
   margin: 0;
   font-family: system-ui, sans-serif;
   width: 280px;
-  background: #ffffff;
 }
 
 .container {
@@ -11,21 +10,39 @@ body {
 
 h1 {
   font-size: 18px;
+}
+
+#confidence {
+  font-size: 13px;
+  margin-bottom: 10px;
+}
+
+label {
+  display: block;
+  font-size: 12px;
   margin-bottom: 8px;
 }
 
-.status {
-  font-size: 13px;
-  color: #555;
-  margin-bottom: 12px;
+input,
+textarea {
+  width: 100%;
+  padding: 6px;
+}
+
+textarea {
+  min-height: 60px;
 }
 
 button {
   width: 100%;
   padding: 8px;
-  border: none;
+  margin-top: 8px;
   background: #111827;
   color: white;
+  border: none;
   border-radius: 6px;
-  cursor: pointer;
+}
+
+#ignoreBtn {
+  background: #9ca3af;
 }
