@@ -7,45 +7,66 @@ generator client {
 }
 
 model User {
-  id             String          @id @default(cuid())
-  name           String?
-  email          String          @unique
-  image          String?
+  id    String  @id @default(cuid())
+  name  String?
+  email String  @unique
+  image String?
 
-  internships    Internship[]
-  interviewLogs  InterviewLog[]
+  internships   Internship[]
+  interviewLogs InterviewLog[]
+  applications  Application[]
 }
 
 model Internship {
-  id          String   @id @default(cuid())
-  role        String
-  company     String
-  location    String?
-  status      String
-  stipend     Int?
-  appliedOn   DateTime
-  followUpOn  DateTime?
-  notes       String?
+  id         String    @id @default(cuid())
+  role       String
+  company    String
+  location   String?
+  status     String
+  stipend    Int?
+  appliedOn  DateTime
+  followUpOn DateTime?
+  notes      String?
 
-  userId      String
-  user        User     @relation(fields: [userId], references: [id])
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model InterviewLog {
-  id          String   @id @default(cuid())
-  round       String
-  company     String
-  mode        String
-  outcome     String
-  experience  String
-  date        DateTime
+  id         String   @id @default(cuid())
+  round      String
+  company    String
+  mode       String
+  outcome    String
+  experience String
+  date       DateTime
 
-  userId      String
-  user        User     @relation(fields: [userId], references: [id])
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Application {
+  id String @id @default(cuid())
+
+  applicationUrl String
+  company        String
+  role           String
+  stipend        Int?
+  description    String?
+  status         String
+  source         String // "extension" | "web"
+
+  createdAt DateTime
+  updatedAt DateTime
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  @@unique([userId, applicationUrl])
 }

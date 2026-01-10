@@ -48,7 +48,6 @@ document.addEventListener("DOMContentLoaded", () => {
       const app = response?.application;
       latestApplicationFromPage = app || null;
 
-      // ❗ hide form only when NOT editing and no detection
       if (!app && !editingAppId) {
         form.hidden = true;
         document.getElementById("emptyState").hidden = false;
@@ -78,7 +77,13 @@ function updateApplicationStatus(appUrl) {
   chrome.storage.local.get(["applications"], (res) => {
     const apps = (res.applications || []).map((a) =>
       a.applicationUrl === appUrl
-        ? { ...a, status: "Applied", submittedAt: new Date().toISOString() }
+        ? {
+            ...a,
+            status: "Applied",
+            submittedAt: new Date().toISOString(),
+            updatedAt: Date.now(),
+            source: "extension",
+          }
         : a
     );
 
@@ -109,12 +114,10 @@ form.addEventListener("submit", (e) => {
 
   const warningEl = document.getElementById("warning");
 
-  // ✅ RESOLVE APPLICATION ID SAFELY
   let applicationId = editingAppId
     ? editingAppId
     : latestApplicationFromPage?.applicationUrl;
 
-  // ✅ MANUAL ENTRY FALLBACK
   if (!applicationId) {
     applicationId = `manual://${Date.now()}`;
   }
@@ -124,6 +127,9 @@ form.addEventListener("submit", (e) => {
       ...a,
       id: a.id || a.applicationUrl,
       status: a.status || "Saved",
+      createdAt: a.createdAt || Date.now(),
+      updatedAt: a.updatedAt || Date.now(),
+      source: a.source || "extension",
     }));
 
     const existing = apps.find((a) => a.id === applicationId);
@@ -136,6 +142,9 @@ form.addEventListener("submit", (e) => {
       stipend: stipend.value,
       description: description.value,
       savedAt: existing?.savedAt || new Date().toISOString(),
+      createdAt: existing?.createdAt || Date.now(),
+      updatedAt: Date.now(),
+      source: "extension",
       status: editingAppId
         ? statusSelect.value
         : existing?.status || "Saved",
@@ -236,7 +245,6 @@ function enterEditMode(app) {
   editingAppId = app.id;
   duplicateConfirmed = true;
 
-  // ✅ FORCE FORM VISIBLE
   form.hidden = false;
   document.getElementById("emptyState").hidden = true;
 
