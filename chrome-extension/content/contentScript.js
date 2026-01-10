@@ -1,7 +1,7 @@
 (() => {
   // ===============================
   // Internly – Content Script
-  // Phase 2 + Phase 3 (FINAL)
+  // Phase 2 + Phase 3 + Phase 5.0
   // ===============================
 
   console.log("[Internly][Content] Content script loaded");
@@ -28,7 +28,7 @@
   }
 
   // -------------------------------
-  // Phase 2 – Detection (UNCHANGED)
+  // Phase 2 – Application Detection
   // -------------------------------
   function detectApplicationPage() {
     let confidence = 0;
@@ -57,6 +57,7 @@
       confidence += 15;
     }
 
+    // LinkedIn Easy Apply override
     if (
       host.includes("linkedin.com") &&
       document.querySelector('[role="dialog"]') &&
@@ -69,7 +70,7 @@
   }
 
   // -------------------------------
-  // Phase 3 – Extraction (SINGLE SOURCE OF TRUTH)
+  // Phase 3 – Extraction
   // -------------------------------
   function safeText(el, maxLen = 300) {
     try {
@@ -174,10 +175,76 @@
   }
 
   // -------------------------------
+  // Phase 5.0 – Submission Detection
+  // -------------------------------
+  let hasDetectedSubmission = false;
+
+  function detectSubmissionSuccess() {
+    if (hasDetectedSubmission) return false;
+
+    const submissionUrlHints = [
+      "thank-you",
+      "success",
+      "submitted",
+      "confirmation",
+      "complete",
+    ];
+
+    if (submissionUrlHints.some((k) => url.includes(k))) {
+      return true;
+    }
+
+    const successTextHints = [
+      "application submitted",
+      "thank you for applying",
+      "we have received your application",
+      "your application has been submitted",
+      "application received",
+    ];
+
+    const bodyText = document.body.innerText.toLowerCase();
+    if (successTextHints.some((t) => bodyText.includes(t))) {
+      return true;
+    }
+
+    // LinkedIn Easy Apply success modal
+    if (
+      host.includes("linkedin.com") &&
+      document.querySelector('[role="dialog"]') &&
+      bodyText.includes("application submitted")
+    ) {
+      return true;
+    }
+
+    return false;
+  }
+
+  function sendSubmissionSignal() {
+    if (hasDetectedSubmission) return;
+
+    hasDetectedSubmission = true;
+
+    console.log("[Internly][Submission] Application submitted detected");
+
+    chrome.runtime.sendMessage(
+      {
+        type: "APPLICATION_SUBMITTED",
+        payload: {
+          applicationUrl: window.location.href,
+          detectedAt: new Date().toISOString(),
+        },
+      },
+      () => {
+        console.log("[Internly][Submission] Background acknowledged");
+      }
+    );
+  }
+
+  // -------------------------------
   // Runner
   // -------------------------------
   let lastConfidence = -1;
-  let hasSentApplication = false; // ✅ NEW (send-once guard)
+  let hasSentApplication = false;
 
   function runDetection() {
     const confidence = detectApplicationPage();
@@ -198,7 +265,6 @@
           extractedApplication
         );
 
-        // ✅ MV3-safe message (forces background wake)
         chrome.runtime.sendMessage(
           {
             type: "APPLICATION_EXTRACTED",
@@ -208,9 +274,7 @@
             },
           },
           () => {
-            console.log(
-              "[Internly][Content] Background acknowledged"
-            );
+            console.log("[Internly][Content] Background acknowledged");
           }
         );
 
@@ -218,6 +282,11 @@
       }
 
       lastConfidence = confidence;
+    }
+
+    // Phase 5.0 check (always safe)
+    if (detectSubmissionSuccess()) {
+      sendSubmissionSignal();
     }
   }
 

@@ -1,6 +1,6 @@
 let duplicateConfirmed = false;
 let showingSaved = false;
-let editingIndex = null; // ✅ NEW: tracks which entry is being edited
+let editingAppId = null; // 🔑 applicationUrl-based identity
 
 const newView = document.getElementById("newView");
 const savedView = document.getElementById("savedView");
@@ -8,6 +8,21 @@ const toggleBtn = document.getElementById("toggleViewBtn");
 const form = document.getElementById("applicationForm");
 const saveBtn = form.querySelector('button[type="submit"]');
 
+const statusSelect = document.getElementById("status");
+const statusWrapper = document.getElementById("statusWrapper");
+
+let latestApplicationFromPage = null;
+
+// -------------------------------
+// Status badge helper (UI ONLY)
+// -------------------------------
+function getStatusClass(status) {
+  return `status-${(status || "saved").toLowerCase()}`;
+}
+
+// -------------------------------
+// Toggle View
+// -------------------------------
 toggleBtn.addEventListener("click", () => {
   showingSaved = !showingSaved;
 
@@ -21,17 +36,29 @@ toggleBtn.addEventListener("click", () => {
   }
 });
 
+// -------------------------------
+// Load latest detected application
+// -------------------------------
 document.addEventListener("DOMContentLoaded", () => {
+  statusWrapper.hidden = true;
+
   chrome.runtime.sendMessage(
     { type: "GET_LATEST_APPLICATION" },
     (response) => {
       const app = response?.application;
+      latestApplicationFromPage = app || null;
 
-      if (!app) {
+      // ❗ hide form only when NOT editing and no detection
+      if (!app && !editingAppId) {
         form.hidden = true;
         document.getElementById("emptyState").hidden = false;
         return;
       }
+
+      form.hidden = false;
+      document.getElementById("emptyState").hidden = true;
+
+      if (!app) return;
 
       document.getElementById("confidence").textContent =
         "Confidence: " + app.confidence;
@@ -44,50 +71,106 @@ document.addEventListener("DOMContentLoaded", () => {
   );
 });
 
+// -------------------------------
+// Update status helper
+// -------------------------------
+function updateApplicationStatus(appUrl) {
+  chrome.storage.local.get(["applications"], (res) => {
+    const apps = (res.applications || []).map((a) =>
+      a.applicationUrl === appUrl
+        ? { ...a, status: "Applied", submittedAt: new Date().toISOString() }
+        : a
+    );
+
+    chrome.storage.local.set({ applications: apps }, loadSavedApplications);
+  });
+}
+
+// -------------------------------
+// Delete helper
+// -------------------------------
+function deleteApplication(appUrl) {
+  if (!confirm("Delete this application?")) return;
+
+  chrome.storage.local.get(["applications"], (res) => {
+    const apps = (res.applications || []).filter(
+      (a) => a.applicationUrl !== appUrl
+    );
+
+    chrome.storage.local.set({ applications: apps }, loadSavedApplications);
+  });
+}
+
+// -------------------------------
+// Save / Update Handler
+// -------------------------------
 form.addEventListener("submit", (e) => {
   e.preventDefault();
 
   const warningEl = document.getElementById("warning");
 
-  const entry = {
-    company: company.value.trim(),
-    role: role.value.trim(),
-    stipend: stipend.value,
-    description: description.value,
-    savedAt: new Date().toISOString(),
-  };
+  // ✅ RESOLVE APPLICATION ID SAFELY
+  let applicationId = editingAppId
+    ? editingAppId
+    : latestApplicationFromPage?.applicationUrl;
+
+  // ✅ MANUAL ENTRY FALLBACK
+  if (!applicationId) {
+    applicationId = `manual://${Date.now()}`;
+  }
 
   chrome.storage.local.get(["applications"], (res) => {
-    const apps = res.applications || [];
+    let apps = (res.applications || []).map((a) => ({
+      ...a,
+      id: a.id || a.applicationUrl,
+      status: a.status || "Saved",
+    }));
 
-    // 📝 EDIT MODE → REPLACE ENTRY
-    if (editingIndex !== null) {
-      apps[editingIndex] = entry;
+    const existing = apps.find((a) => a.id === applicationId);
+
+    const entry = {
+      id: applicationId,
+      applicationUrl: applicationId,
+      company: company.value.trim(),
+      role: role.value.trim(),
+      stipend: stipend.value,
+      description: description.value,
+      savedAt: existing?.savedAt || new Date().toISOString(),
+      status: editingAppId
+        ? statusSelect.value
+        : existing?.status || "Saved",
+    };
+
+    // ---------------------------
+    // EDIT MODE
+    // ---------------------------
+    if (editingAppId) {
+      apps = apps.map((a) => (a.id === editingAppId ? entry : a));
 
       chrome.storage.local.set({ applications: apps }, () => {
         exitEditMode();
+        showingSaved = true;
+        newView.hidden = true;
+        savedView.hidden = false;
+        toggleBtn.textContent = "Back to New Application";
         loadSavedApplications();
       });
-
       return;
     }
 
-    // ➕ CREATE MODE → DUPLICATE CHECK
-    const isDuplicate = apps.some(
-      (a) =>
-        a.company?.toLowerCase() === entry.company.toLowerCase() &&
-        a.role?.toLowerCase() === entry.role.toLowerCase()
-    );
+    const exists = apps.some((a) => a.id === applicationId);
 
-    if (isDuplicate && !duplicateConfirmed) {
+    if (exists && !duplicateConfirmed) {
       warningEl.textContent =
-        "⚠ Duplicate detected. Click Save again to confirm.";
+        "⚠ This application is already saved. Click Save again to update it.";
       warningEl.style.display = "block";
       duplicateConfirmed = true;
       return;
     }
 
-    apps.push(entry);
+    const index = apps.findIndex((a) => a.id === applicationId);
+    if (index !== -1) apps[index] = entry;
+    else apps.push(entry);
 
     chrome.storage.local.set({ applications: apps }, () => {
       chrome.runtime.sendMessage({ type: "CLEAR_LATEST_APPLICATION" });
@@ -96,14 +179,9 @@ form.addEventListener("submit", (e) => {
   });
 });
 
-document.getElementById("ignoreBtn").addEventListener("click", () => {
-  chrome.runtime.sendMessage({ type: "CLEAR_LATEST_APPLICATION" });
-  window.close();
-});
-
-// ===============================
+// -------------------------------
 // Saved Applications Viewer
-// ===============================
+// -------------------------------
 function loadSavedApplications() {
   const list = document.getElementById("savedList");
   list.innerHTML = "";
@@ -116,38 +194,59 @@ function loadSavedApplications() {
       return;
     }
 
-    apps.forEach((app, index) => {
+    apps.forEach((app) => {
       const li = document.createElement("li");
       li.className = "saved-item";
-      li.style.cursor = "pointer";
 
       li.innerHTML = `
         <strong>${app.company}</strong><br/>
         <span>${app.role}</span><br/>
+        <span class="status-badge ${getStatusClass(app.status)}">
+          ${app.status || "Saved"}
+        </span><br/>
         <span>Saved: ${new Date(app.savedAt).toLocaleDateString()}</span>
+
+        <div class="actions">
+          <button class="edit-btn">✏️ Edit</button>
+          <button class="delete-btn">🗑️ Delete</button>
+          ${
+            app.status !== "Applied"
+              ? `<button class="mark-applied-btn">✔ Mark as Applied</button>`
+              : ""
+          }
+        </div>
       `;
 
-      // ✏️ CLICK → EDIT MODE
-      li.addEventListener("click", () => {
-        enterEditMode(app, index);
-      });
+      li.querySelector(".edit-btn").onclick = () => enterEditMode(app);
+      li.querySelector(".delete-btn").onclick = () =>
+        deleteApplication(app.applicationUrl);
+      li.querySelector(".mark-applied-btn")?.addEventListener("click", () =>
+        updateApplicationStatus(app.applicationUrl)
+      );
 
       list.appendChild(li);
     });
   });
 }
 
-// ===============================
+// -------------------------------
 // Edit Mode Helpers
-// ===============================
-function enterEditMode(app, index) {
-  editingIndex = index;
-  duplicateConfirmed = true; // skip duplicate check when editing
+// -------------------------------
+function enterEditMode(app) {
+  editingAppId = app.id;
+  duplicateConfirmed = true;
+
+  // ✅ FORCE FORM VISIBLE
+  form.hidden = false;
+  document.getElementById("emptyState").hidden = true;
 
   company.value = app.company || "";
   role.value = app.role || "";
   stipend.value = app.stipend || "";
   description.value = app.description || "";
+
+  statusWrapper.hidden = false;
+  statusSelect.value = app.status || "Saved";
 
   saveBtn.textContent = "Update";
 
@@ -157,10 +256,12 @@ function enterEditMode(app, index) {
 }
 
 function exitEditMode() {
-  editingIndex = null;
+  editingAppId = null;
   duplicateConfirmed = false;
 
   form.reset();
+  statusWrapper.hidden = true;
+
   saveBtn.textContent = "Save";
 
   newView.hidden = false;
