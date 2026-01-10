@@ -1,4 +1,4 @@
-type DetectionResult = {
+export type DetectionResult = {
   confidence: number;
   signals: {
     url: number;
@@ -16,18 +16,16 @@ export function detectApplicationPage(): DetectionResult {
 
   // --- URL Heuristics (30) ---
   const urlKeywords = ["apply", "career", "job", "intern", "position"];
-  urlKeywords.forEach((keyword) => {
+  for (const keyword of urlKeywords) {
     if (url.includes(keyword)) urlScore += 6;
-  });
+  }
   urlScore = Math.min(urlScore, 30);
 
   // --- DOM Heuristics (50) ---
   const forms = document.querySelectorAll("form");
   if (forms.length > 0) domScore += 20;
 
-  const fileInputs = document.querySelectorAll(
-    'input[type="file"]'
-  );
+  const fileInputs = document.querySelectorAll('input[type="file"]');
   if (fileInputs.length > 0) domScore += 20;
 
   const submitButtons = document.querySelectorAll(
@@ -43,11 +41,11 @@ export function detectApplicationPage(): DetectionResult {
   );
 
   const formKeywords = ["resume", "cv", "cover", "portfolio"];
-  formKeywords.forEach((keyword) => {
+  for (const keyword of formKeywords) {
     if (labels.some((text) => text.includes(keyword))) {
       formScore += 5;
     }
-  });
+  }
 
   formScore = Math.min(formScore, 20);
 

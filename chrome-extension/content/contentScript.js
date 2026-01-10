@@ -1,7 +1,7 @@
 (() => {
   // ===============================
   // Internly – Content Script
-  // Phase 2: Application Page Detection
+  // Phase 2 + Phase 3 (FINAL)
   // ===============================
 
   console.log("[Internly][Content] Content script loaded");
@@ -11,7 +11,7 @@
   const host = window.location.hostname.toLowerCase();
 
   // -------------------------------
-  // 1️⃣ Hard-block obvious non-job sites
+  // Block obvious non-job sites
   // -------------------------------
   const BLOCKED_HOSTS = [
     "google.com",
@@ -28,41 +28,26 @@
   }
 
   // -------------------------------
-  // 2️⃣ Detection engine
+  // Phase 2 – Detection (UNCHANGED)
   // -------------------------------
   function detectApplicationPage() {
     let confidence = 0;
 
-    // -------------------------------
-    // URL heuristics
-    // -------------------------------
     if (url.includes("jobs")) confidence += 25;
     if (url.includes("career")) confidence += 20;
     if (url.includes("apply")) confidence += 40;
 
-    // -------------------------------
-    // DOM heuristics
-    // -------------------------------
     const forms = document.querySelectorAll("form");
     if (forms.length > 0 && forms.length <= 4) confidence += 20;
 
-    const fileInputs = document.querySelectorAll('input[type="file"]');
-    if (fileInputs.length > 0) confidence += 35;
+    if (document.querySelectorAll('input[type="file"]').length > 0)
+      confidence += 35;
 
     const buttons = [...document.querySelectorAll("button, a")];
-    if (
-      buttons.some((b) =>
-        b.innerText.toLowerCase().includes("apply")
-      )
-    ) {
+    if (buttons.some((b) => b.innerText.toLowerCase().includes("apply")))
       confidence += 20;
-    }
 
-    // -------------------------------
-    // Text heuristics
-    // -------------------------------
     const text = document.body.innerText.toLowerCase();
-
     if (
       text.includes("job description") ||
       text.includes("responsibilities") ||
@@ -72,9 +57,6 @@
       confidence += 15;
     }
 
-    // -------------------------------
-    // LinkedIn Easy Apply override
-    // -------------------------------
     if (
       host.includes("linkedin.com") &&
       document.querySelector('[role="dialog"]') &&
@@ -87,7 +69,114 @@
   }
 
   // -------------------------------
-  // 3️⃣ Detection runner (deduped logs)
+  // Phase 3 – Extraction (SINGLE SOURCE OF TRUTH)
+  // -------------------------------
+  function safeText(el, maxLen = 300) {
+    try {
+      if (!el || !el.innerText) return null;
+      return el.innerText.trim().slice(0, maxLen);
+    } catch {
+      return null;
+    }
+  }
+
+  function titleCase(text) {
+    return text.replace(/\b\w/g, (c) => c.toUpperCase());
+  }
+
+  function computeFollowUpDate(days = 7) {
+    const d = new Date();
+    d.setDate(d.getDate() + days);
+    return d.toISOString();
+  }
+
+  function extractCompany() {
+    try {
+      const host = window.location.hostname.replace("www.", "");
+      const brand = host.split(".")[0];
+      return brand ? titleCase(brand) : null;
+    } catch {
+      return null;
+    }
+  }
+
+  function extractRole() {
+    try {
+      // 1️⃣ URL slug (PRIMARY – Stripe / Greenhouse)
+      const path = window.location.pathname;
+      const match =
+        path.match(/listing\/([^\/]+)/i) ||
+        path.match(/jobs\/([^\/]+)/i) ||
+        path.match(/positions\/([^\/]+)/i);
+
+      if (match && match[1]) {
+        return titleCase(match[1].replace(/-/g, " "));
+      }
+
+      // 2️⃣ Headings fallback
+      const headings = document.querySelectorAll("h1, h2, h3");
+      for (const h of headings) {
+        const text = safeText(h, 200);
+        if (text && text.length > 10 && text.toLowerCase() !== "jobs") {
+          return text;
+        }
+      }
+
+      return null;
+    } catch {
+      return null;
+    }
+  }
+
+  function extractStipend() {
+    try {
+      const text = document.body.innerText.toLowerCase();
+      const match = text.match(
+        /(stipend|salary|ctc|pay)[^\d]{0,20}(\₹|\$)?\s?\d+/i
+      );
+      return match ? match[0] : null;
+    } catch {
+      return null;
+    }
+  }
+
+  function extractDescription() {
+    try {
+      const keywords = [
+        "job description",
+        "responsibilities",
+        "requirements",
+        "qualifications",
+      ];
+
+      const blocks = document.querySelectorAll("section, article, div");
+      for (const el of blocks) {
+        const text = el.innerText;
+        if (!text || text.length < 120) continue;
+        if (keywords.some((k) => text.toLowerCase().includes(k))) {
+          return text.trim().slice(0, 2000);
+        }
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  }
+
+  function extractApplicationData() {
+    return {
+      company: extractCompany(),
+      role: extractRole(),
+      stipend: extractStipend(),
+      description: extractDescription(),
+      applicationUrl: window.location.href,
+      appliedAt: new Date().toISOString(),
+      followUpAt: computeFollowUpDate(7),
+    };
+  }
+
+  // -------------------------------
+  // Runner
   // -------------------------------
   let lastConfidence = -1;
 
@@ -95,39 +184,32 @@
     const confidence = detectApplicationPage();
 
     if (confidence !== lastConfidence) {
-      let level = "Low";
-      if (confidence >= 60) level = "High";
-      else if (confidence >= 30) level = "Medium";
+      const level =
+        confidence >= 60 ? "High" : confidence >= 30 ? "Medium" : "Low";
 
       console.log(
         `[Internly][Detection] Confidence: ${confidence} → ${level}`
       );
 
+      if (confidence >= 60) {
+        console.log(
+          "[Internly][Extracted Application]",
+          extractApplicationData()
+        );
+      }
+
       lastConfidence = confidence;
     }
   }
 
-  console.log("[Internly][Content] Init called");
-
-  // -------------------------------
-  // 4️⃣ Initial + delayed runs
-  // -------------------------------
   runDetection();
   setTimeout(runDetection, 1500);
   setTimeout(runDetection, 3000);
 
-  // -------------------------------
-  // 5️⃣ Debounced MutationObserver
-  // -------------------------------
-  let debounceTimer = null;
-
   const observer = new MutationObserver(() => {
-    clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(runDetection, 600);
+    clearTimeout(observer._t);
+    observer._t = setTimeout(runDetection, 600);
   });
 
-  observer.observe(document.body, {
-    childList: true,
-    subtree: true,
-  });
+  observer.observe(document.body, { childList: true, subtree: true });
 })();
