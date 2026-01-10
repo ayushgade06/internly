@@ -1,56 +1,23 @@
 {
   "manifest_version": 3,
-  "name": "Internship Auto Tracker",
-  "version": "2.0.0",
-  "description": "Automatically detects and tracks your internship/job applications",
-  "permissions": [
-    "storage",
-    "activeTab",
-    "scripting",
-    "notifications"
-  ],
-  "host_permissions": [
-    "https://*.linkedin.com/*",
-    "https://*.internshala.com/*",
-    "https://*.greenhouse.io/*",
-    "https://*.lever.co/*",
-    "https://*.workday.com/*",
-    "https://*/*"
-  ],
+  "name": "Internly",
+  "version": "0.1.0",
+  "description": "Internship application tracker",
+
+  "permissions": ["storage"],
+
   "background": {
-    "service_worker": "background/background.js",
-    "type": "module"
+    "service_worker": "background/serviceWorker.js"
   },
-  "action": {
-    "default_popup": "popup/popup.html",
-    "default_icon": {
-      "16": "icons/icon16.png",
-      "48": "icons/icon48.png",
-      "128": "icons/icon128.png"
-    }
-  },
+
   "content_scripts": [
     {
-      "matches": [
-        "https://*.linkedin.com/*",
-        "https://*.internshala.com/*",
-        "https://*.greenhouse.io/*",
-        "https://*.lever.co/*",
-        "https://*.workday.com/*"
-      ],
-      "js": ["content/contentScript.js"],
-      "run_at": "document_idle"
+      "matches": ["<all_urls>"],
+      "js": ["content/contentScript.js"]
     }
   ],
-  "icons": {
-    "16": "icons/icon16.png",
-    "48": "icons/icon48.png",
-    "128": "icons/icon128.png"
-  },
-  "web_accessible_resources": [
-    {
-      "resources": ["content/*.js"],
-      "matches": ["<all_urls>"]
-    }
-  ]
+
+  "action": {
+    "default_popup": "popup/popup.html"
+  }
 }

@@ -29,6 +29,6 @@
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts",
     "**/*.mts"
-  ],
+, "chrome-extension/content/contentScript.js", "chrome-extension/background/serviceWorker.js", "chrome-extension/popup/popup.js"  ],
   "exclude": ["node_modules"]
 }
