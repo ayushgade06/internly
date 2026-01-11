@@ -1,20 +1,28 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import jwt from "jsonwebtoken";
 
 export async function GET(req: Request) {
-  const email = req.headers.get("x-user-email");
+  const auth = req.headers.get("authorization");
 
-  if (!email) {
-    return NextResponse.json(
-      { error: "Missing user email" },
-      { status: 401 }
-    );
+  if (!auth) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const user = await prisma.user.findUnique({
-    where: { email },
-    include: { applications: true },
-  });
+  try {
+    const token = auth.replace("Bearer ", "");
+    const payload = jwt.verify(
+      token,
+      process.env.INTERNLY_JWT_SECRET!
+    ) as { email: string };
 
-  return NextResponse.json(user?.applications || []);
+    const user = await prisma.user.findUnique({
+      where: { email: payload.email },
+      include: { applications: true },
+    });
+
+    return NextResponse.json(user?.applications || []);
+  } catch {
+    return NextResponse.json({ error: "Invalid token" }, { status: 401 });
+  }
 }

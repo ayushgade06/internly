@@ -1,52 +1,83 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import jwt from "jsonwebtoken";
 
 export async function POST(req: Request) {
-  const email = req.headers.get("x-user-email");
-  const body = await req.json();
+  const auth = req.headers.get("authorization");
 
-  if (!email || !body.applicationUrl) {
+  if (!auth) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  let payload: { email: string };
+
+  try {
+    const token = auth.replace("Bearer ", "");
+    payload = jwt.verify(
+      token,
+      process.env.INTERNLY_JWT_SECRET!
+    ) as { email: string };
+  } catch {
+    return NextResponse.json({ error: "Invalid token" }, { status: 401 });
+  }
+
+  const body = await req.json();
+  const applications = body.applications;
+
+  if (!Array.isArray(applications) || applications.length === 0) {
     return NextResponse.json(
-      { error: "Invalid request" },
+      { error: "Invalid applications payload" },
       { status: 400 }
     );
   }
 
+  // Ensure user exists
   const user = await prisma.user.upsert({
-    where: { email },
+    where: { email: payload.email },
     update: {},
-    create: { email },
+    create: { email: payload.email },
   });
 
-  const app = await prisma.application.upsert({
-    where: {
-      userId_applicationUrl: {
-        userId: user.id,
-        applicationUrl: body.applicationUrl,
+  const results = [];
+
+  for (const app of applications) {
+    if (!app.applicationId || !app.applicationUrl) continue;
+
+    const saved = await prisma.application.upsert({
+      where: {
+        userId_applicationId: {
+          userId: user.id,
+          applicationId: app.applicationId,
+        },
       },
-    },
-    update: {
-      company: body.company,
-      role: body.role,
-      stipend: body.stipend,
-      description: body.description,
-      status: body.status,
-      source: body.source,
-      updatedAt: new Date(body.updatedAt),
-    },
-    create: {
-      applicationUrl: body.applicationUrl,
-      company: body.company,
-      role: body.role,
-      stipend: body.stipend,
-      description: body.description,
-      status: body.status,
-      source: body.source,
-      createdAt: new Date(body.createdAt),
-      updatedAt: new Date(body.updatedAt),
-      userId: user.id,
-    },
-  });
+      update: {
+        company: app.company,
+        role: app.role,
+        stipend: app.stipend,
+        description: app.description,
+        status: app.status,
+        source: app.source,
+        updatedAt: new Date(app.updatedAt),
+      },
+      create: {
+        applicationId: app.applicationId,
+        applicationUrl: app.applicationUrl,
+        company: app.company,
+        role: app.role,
+        stipend: app.stipend,
+        description: app.description,
+        status: app.status,
+        source: app.source,
+        createdAt: new Date(app.createdAt),
+        updatedAt: app.updatedAt
+        ? new Date(app.updatedAt)
+        : new Date(),
+        userId: user.id,
+      },
+    });
 
-  return NextResponse.json(app);
+    results.push(saved);
+  }
+
+  return NextResponse.json({ count: results.length });
 }

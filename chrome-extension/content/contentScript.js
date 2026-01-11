@@ -70,7 +70,7 @@
   }
 
   // -------------------------------
-  // Phase 3 – Extraction
+  // Phase 3 – Extraction Helpers
   // -------------------------------
   function safeText(el, maxLen = 300) {
     try {
@@ -83,6 +83,10 @@
 
   function titleCase(text) {
     return text.replace(/\b\w/g, (c) => c.toUpperCase());
+  }
+
+  function normalize(text) {
+    return text ? text.trim().toLowerCase() : "unknown";
   }
 
   function computeFollowUpDate(days = 7) {
@@ -162,13 +166,23 @@
     }
   }
 
+  // -------------------------------
+  // Phase 3 – Application Object
+  // -------------------------------
   function extractApplicationData() {
+    const role = extractRole();
+    const applicationUrl = window.location.href;
+
+    // 🔑 FIX: composite identity (URL + role)
+    const applicationId = `${applicationUrl}::${normalize(role)}`;
+
     return {
+      applicationId,
       company: extractCompany(),
-      role: extractRole(),
+      role,
       stipend: extractStipend(),
       description: extractDescription(),
-      applicationUrl: window.location.href,
+      applicationUrl,
       appliedAt: new Date().toISOString(),
       followUpAt: computeFollowUpDate(7),
     };
@@ -226,18 +240,13 @@
 
     console.log("[Internly][Submission] Application submitted detected");
 
-    chrome.runtime.sendMessage(
-      {
-        type: "APPLICATION_SUBMITTED",
-        payload: {
-          applicationUrl: window.location.href,
-          detectedAt: new Date().toISOString(),
-        },
+    chrome.runtime.sendMessage({
+      type: "APPLICATION_SUBMITTED",
+      payload: {
+        applicationUrl: window.location.href,
+        detectedAt: new Date().toISOString(),
       },
-      () => {
-        console.log("[Internly][Submission] Background acknowledged");
-      }
-    );
+    });
   }
 
   // -------------------------------
@@ -265,18 +274,13 @@
           extractedApplication
         );
 
-        chrome.runtime.sendMessage(
-          {
-            type: "APPLICATION_EXTRACTED",
-            payload: {
-              ...extractedApplication,
-              confidence,
-            },
+        chrome.runtime.sendMessage({
+          type: "APPLICATION_EXTRACTED",
+          payload: {
+            ...extractedApplication,
+            confidence,
           },
-          () => {
-            console.log("[Internly][Content] Background acknowledged");
-          }
-        );
+        });
 
         hasSentApplication = true;
       }
@@ -284,7 +288,6 @@
       lastConfidence = confidence;
     }
 
-    // Phase 5.0 check (always safe)
     if (detectSubmissionSuccess()) {
       sendSubmissionSignal();
     }

@@ -54,19 +54,20 @@ model InterviewLog {
 model Application {
   id String @id @default(cuid())
 
+  applicationId  String
   applicationUrl String
   company        String
   role           String
   stipend        Int?
   description    String?
   status         String
-  source         String // "extension" | "web"
+  source         String
 
   createdAt DateTime
   updatedAt DateTime
 
   userId String
-  user   User   @relation(fields: [userId], references: [id])
+  user   User @relation(fields: [userId], references: [id])
 
-  @@unique([userId, applicationUrl])
+  @@unique([userId, applicationId])
 }

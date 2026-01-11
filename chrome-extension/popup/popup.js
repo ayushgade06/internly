@@ -1,6 +1,6 @@
 let duplicateConfirmed = false;
 let showingSaved = false;
-let editingAppId = null; // 🔑 applicationUrl-based identity
+let editingAppId = null;
 
 const newView = document.getElementById("newView");
 const savedView = document.getElementById("savedView");
@@ -14,14 +14,40 @@ const statusWrapper = document.getElementById("statusWrapper");
 let latestApplicationFromPage = null;
 
 // -------------------------------
-// Status badge helper (UI ONLY)
+// 🔐 AUTH TOKEN
+// -------------------------------
+async function ensureAuthToken() {
+  const stored = await chrome.storage.local.get("authToken");
+  if (stored.authToken) return stored.authToken;
+
+  try {
+    const res = await fetch(
+      "http://localhost:3000/api/internly/session-token",
+      { credentials: "include" }
+    );
+
+    if (!res.ok) return null;
+
+    const data = await res.json();
+    if (!data.token) return null;
+
+    await chrome.storage.local.set({ authToken: data.token });
+    return data.token;
+  } catch {
+    return null;
+  }
+}
+
+// 🔥 NEW: tell background to sync
+function triggerBackgroundSync() {
+  chrome.runtime.sendMessage({ type: "SYNC_APPLICATIONS" });
+}
+
 // -------------------------------
 function getStatusClass(status) {
   return `status-${(status || "saved").toLowerCase()}`;
 }
 
-// -------------------------------
-// Toggle View
 // -------------------------------
 toggleBtn.addEventListener("click", () => {
   showingSaved = !showingSaved;
@@ -37,10 +63,13 @@ toggleBtn.addEventListener("click", () => {
 });
 
 // -------------------------------
-// Load latest detected application
-// -------------------------------
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
   statusWrapper.hidden = true;
+
+  await ensureAuthToken();
+
+  // 🔥 ask background to sync
+  triggerBackgroundSync();
 
   chrome.runtime.sendMessage(
     { type: "GET_LATEST_APPLICATION" },
@@ -71,92 +100,81 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 // -------------------------------
-// Update status helper
-// -------------------------------
-function updateApplicationStatus(appUrl) {
+function updateApplicationStatus(applicationId) {
   chrome.storage.local.get(["applications"], (res) => {
     const apps = (res.applications || []).map((a) =>
-      a.applicationUrl === appUrl
+      a.applicationId === applicationId
         ? {
             ...a,
             status: "Applied",
-            submittedAt: new Date().toISOString(),
-            updatedAt: Date.now(),
+            updatedAt: new Date().toISOString(),
             source: "extension",
           }
         : a
     );
 
-    chrome.storage.local.set({ applications: apps }, loadSavedApplications);
+    chrome.storage.local.set({ applications: apps }, () => {
+      triggerBackgroundSync();
+      loadSavedApplications();
+    });
   });
 }
 
 // -------------------------------
-// Delete helper
-// -------------------------------
-function deleteApplication(appUrl) {
+function deleteApplication(applicationId) {
   if (!confirm("Delete this application?")) return;
 
   chrome.storage.local.get(["applications"], (res) => {
     const apps = (res.applications || []).filter(
-      (a) => a.applicationUrl !== appUrl
+      (a) => a.applicationId !== applicationId
     );
 
-    chrome.storage.local.set({ applications: apps }, loadSavedApplications);
+    chrome.storage.local.set({ applications: apps }, () => {
+      triggerBackgroundSync();
+      loadSavedApplications();
+    });
   });
 }
 
-// -------------------------------
-// Save / Update Handler
 // -------------------------------
 form.addEventListener("submit", (e) => {
   e.preventDefault();
 
   const warningEl = document.getElementById("warning");
 
-  let applicationId = editingAppId
-    ? editingAppId
-    : latestApplicationFromPage?.applicationUrl;
-
-  if (!applicationId) {
-    applicationId = `manual://${Date.now()}`;
-  }
+  let applicationId =
+    editingAppId ||
+    latestApplicationFromPage?.applicationId ||
+    `manual://${Date.now()}`;
 
   chrome.storage.local.get(["applications"], (res) => {
-    let apps = (res.applications || []).map((a) => ({
-      ...a,
-      id: a.id || a.applicationUrl,
-      status: a.status || "Saved",
-      createdAt: a.createdAt || Date.now(),
-      updatedAt: a.updatedAt || Date.now(),
-      source: a.source || "extension",
-    }));
-
-    const existing = apps.find((a) => a.id === applicationId);
+    let apps = res.applications || [];
+    const existing = apps.find((a) => a.applicationId === applicationId);
 
     const entry = {
-      id: applicationId,
-      applicationUrl: applicationId,
+      applicationId,
+      applicationUrl:
+        latestApplicationFromPage?.applicationUrl || applicationId,
       company: company.value.trim(),
       role: role.value.trim(),
       stipend: stipend.value,
       description: description.value,
       savedAt: existing?.savedAt || new Date().toISOString(),
-      createdAt: existing?.createdAt || Date.now(),
-      updatedAt: Date.now(),
+      createdAt: existing?.createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
       source: "extension",
       status: editingAppId
         ? statusSelect.value
         : existing?.status || "Saved",
     };
 
-    // ---------------------------
-    // EDIT MODE
-    // ---------------------------
     if (editingAppId) {
-      apps = apps.map((a) => (a.id === editingAppId ? entry : a));
+      apps = apps.map((a) =>
+        a.applicationId === editingAppId ? entry : a
+      );
 
       chrome.storage.local.set({ applications: apps }, () => {
+        triggerBackgroundSync();
         exitEditMode();
         showingSaved = true;
         newView.hidden = true;
@@ -167,29 +185,30 @@ form.addEventListener("submit", (e) => {
       return;
     }
 
-    const exists = apps.some((a) => a.id === applicationId);
-
-    if (exists && !duplicateConfirmed) {
+    if (existing && !duplicateConfirmed) {
       warningEl.textContent =
-        "⚠ This application is already saved. Click Save again to update it.";
+        "⚠ This exact role from this page is already saved. Click Save again to update it.";
       warningEl.style.display = "block";
       duplicateConfirmed = true;
       return;
     }
 
-    const index = apps.findIndex((a) => a.id === applicationId);
-    if (index !== -1) apps[index] = entry;
-    else apps.push(entry);
+    if (existing) {
+      apps = apps.map((a) =>
+        a.applicationId === applicationId ? entry : a
+      );
+    } else {
+      apps.push(entry);
+    }
 
     chrome.storage.local.set({ applications: apps }, () => {
+      triggerBackgroundSync();
       chrome.runtime.sendMessage({ type: "CLEAR_LATEST_APPLICATION" });
-      window.close();
+      setTimeout(() => window.close(), 300);
     });
   });
 });
 
-// -------------------------------
-// Saved Applications Viewer
 // -------------------------------
 function loadSavedApplications() {
   const list = document.getElementById("savedList");
@@ -214,7 +233,6 @@ function loadSavedApplications() {
           ${app.status || "Saved"}
         </span><br/>
         <span>Saved: ${new Date(app.savedAt).toLocaleDateString()}</span>
-
         <div class="actions">
           <button class="edit-btn">✏️ Edit</button>
           <button class="delete-btn">🗑️ Delete</button>
@@ -228,9 +246,9 @@ function loadSavedApplications() {
 
       li.querySelector(".edit-btn").onclick = () => enterEditMode(app);
       li.querySelector(".delete-btn").onclick = () =>
-        deleteApplication(app.applicationUrl);
+        deleteApplication(app.applicationId);
       li.querySelector(".mark-applied-btn")?.addEventListener("click", () =>
-        updateApplicationStatus(app.applicationUrl)
+        updateApplicationStatus(app.applicationId)
       );
 
       list.appendChild(li);
@@ -239,10 +257,8 @@ function loadSavedApplications() {
 }
 
 // -------------------------------
-// Edit Mode Helpers
-// -------------------------------
 function enterEditMode(app) {
-  editingAppId = app.id;
+  editingAppId = app.applicationId;
   duplicateConfirmed = true;
 
   form.hidden = false;
