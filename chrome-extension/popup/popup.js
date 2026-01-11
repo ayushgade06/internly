@@ -13,28 +13,76 @@ const statusWrapper = document.getElementById("statusWrapper");
 
 let latestApplicationFromPage = null;
 
+const DEFAULT_API_BASE = "http://localhost:3000"; 
+let currentApiBase = DEFAULT_API_BASE;
+
+/**
+ * 🕵️ Detect if the user is currently on an Internly site (localhost or LAN IP)
+ * and update the API_BASE accordingly.
+ */
+async function getEffectiveApiBase() {
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (tab?.url) {
+      const url = new URL(tab.url);
+      if (url.port === "3000" || url.hostname === "localhost" || url.hostname.startsWith("192.168")) {
+        const detected = `${url.protocol}//${url.host}`;
+        await chrome.storage.local.set({ apiBase: detected });
+        return detected;
+      }
+    }
+  } catch (e) {
+    console.error("[Internly] Origin detection failed", e);
+  }
+  const stored = await chrome.storage.local.get("apiBase");
+  return stored.apiBase || DEFAULT_API_BASE;
+}
+
 // -------------------------------
 // 🔐 AUTH TOKEN
 // -------------------------------
 async function ensureAuthToken() {
-  const stored = await chrome.storage.local.get("authToken");
-  if (stored.authToken) return stored.authToken;
+  currentApiBase = await getEffectiveApiBase();
+  console.log("[Internly] Using API Base:", currentApiBase);
 
+  const authWarning = document.getElementById("authWarning");
+  const loginLink = document.getElementById("loginLink");
+
+  loginLink.onclick = (e) => {
+    e.preventDefault();
+    chrome.tabs.create({ url: currentApiBase });
+  };
+
+  const stored = await chrome.storage.local.get("authToken");
+  
+  // Try to verify existing token or get new one
   try {
     const res = await fetch(
-      "http://localhost:3000/api/internly/session-token",
+      `${currentApiBase}/api/internly/session-token`,
       { credentials: "include" }
     );
 
-    if (!res.ok) return null;
+    if (!res.ok) {
+      await chrome.storage.local.remove("authToken");
+      authWarning.style.display = "block";
+      return null;
+    }
 
     const data = await res.json();
-    if (!data.token) return null;
+    if (!data.token) {
+      await chrome.storage.local.remove("authToken");
+      authWarning.style.display = "block";
+      return null;
+    }
 
+    authWarning.style.display = "none";
     await chrome.storage.local.set({ authToken: data.token });
     return data.token;
-  } catch {
-    return null;
+  } catch (err) {
+    console.warn("[Internly] Auth check failed:", err);
+    // If we have an edge-case network error, keep existing token but show warning
+    authWarning.style.display = stored.authToken ? "none" : "block";
+    return stored.authToken || null;
   }
 }
 
@@ -66,23 +114,31 @@ toggleBtn.addEventListener("click", () => {
 document.addEventListener("DOMContentLoaded", async () => {
   statusWrapper.hidden = true;
 
-  await ensureAuthToken();
+  console.log("[Internly] Popup loaded, fetching latest app...");
 
-  // 🔥 ask background to sync
-  triggerBackgroundSync();
+  // 🔥 Non-blocking auth check
+  ensureAuthToken().then(token => {
+    if (token) {
+      console.log("[Internly] Auth verified, triggering sync");
+      triggerBackgroundSync();
+    }
+  });
 
   chrome.runtime.sendMessage(
     { type: "GET_LATEST_APPLICATION" },
     (response) => {
+      console.log("[Internly] Latest app response:", response);
       const app = response?.application;
       latestApplicationFromPage = app || null;
 
       if (!app && !editingAppId) {
+        console.warn("[Internly] No app detected or stored");
         form.hidden = true;
         document.getElementById("emptyState").hidden = false;
         return;
       }
 
+      console.log("[Internly] Showing form for:", app?.company);
       form.hidden = false;
       document.getElementById("emptyState").hidden = true;
 

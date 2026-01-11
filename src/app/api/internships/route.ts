@@ -67,12 +67,37 @@ export async function GET() {
     return new NextResponse("Unauthorized", { status: 401 });
   }
 
-  const internships = await prisma.internship.findMany({
-    where: { user: { email: session.user.email } },
-    orderBy: { createdAt: "desc" },
-  });
+  const [internships, extensionApps] = await Promise.all([
+    prisma.internship.findMany({
+      where: { user: { email: session.user.email } },
+      orderBy: { appliedOn: "desc" },
+    }),
+    prisma.application.findMany({
+      where: { user: { email: session.user.email } },
+      orderBy: { createdAt: "desc" },
+    }),
+  ]);
 
-  return NextResponse.json(internships, {
+  // Merge and normalize for the table view
+  const merged = [
+    ...internships.map((i) => ({ ...i, source: "manual" })),
+    ...extensionApps.map((a) => ({
+      id: a.id,
+      role: a.role,
+      company: a.company,
+      location: "Remote (Detected)", // Or placeholder
+      status: a.status,
+      stipend: a.stipend,
+      appliedOn: a.createdAt,
+      notes: a.description,
+      source: "extension",
+    })),
+  ].sort(
+    (a, b) =>
+      new Date(b.appliedOn).getTime() - new Date(a.appliedOn).getTime()
+  );
+
+  return NextResponse.json(merged, {
     headers: { "Cache-Control": "no-store" },
   });
 }

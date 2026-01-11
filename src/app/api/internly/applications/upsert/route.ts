@@ -43,6 +43,9 @@ export async function POST(req: Request) {
   for (const app of applications) {
     if (!app.applicationId || !app.applicationUrl) continue;
 
+    const stipend = app.stipend ? parseInt(String(app.stipend), 10) : null;
+    const finalStipend = isNaN(stipend as any) ? null : stipend;
+
     const saved = await prisma.application.upsert({
       where: {
         userId_applicationId: {
@@ -53,7 +56,7 @@ export async function POST(req: Request) {
       update: {
         company: app.company,
         role: app.role,
-        stipend: app.stipend,
+        stipend: finalStipend,
         description: app.description,
         status: app.status,
         source: app.source,
@@ -64,7 +67,7 @@ export async function POST(req: Request) {
         applicationUrl: app.applicationUrl,
         company: app.company,
         role: app.role,
-        stipend: app.stipend,
+        stipend: finalStipend,
         description: app.description,
         status: app.status,
         source: app.source,
@@ -79,5 +82,23 @@ export async function POST(req: Request) {
     results.push(saved);
   }
 
-  return NextResponse.json({ count: results.length });
+  const origin = req.headers.get("origin");
+  const headers: Record<string, string> = {
+    "Access-Control-Allow-Origin": origin || "*",
+    "Access-Control-Allow-Credentials": "true",
+  };
+
+  return NextResponse.json({ count: results.length }, { headers });
+}
+
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 204,
+    headers: {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "POST,OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type, Authorization",
+      "Access-Control-Allow-Credentials": "true",
+    },
+  });
 }

@@ -12,8 +12,8 @@ export async function PATCH(
   ctx: { params: Promise<{ id: string }> }
 ) {
   const { id } = await ctx.params;
-
   const session = await getServerSession(authOptions);
+  
   if (!session?.user?.email) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -26,27 +26,38 @@ export async function PATCH(
   if (body.location !== undefined) data.location = body.location;
   if (body.status !== undefined) data.status = body.status;
   if (body.notes !== undefined) data.notes = body.notes;
+  if (body.description !== undefined) data.description = body.description;
 
   if (body.stipend !== undefined) {
     data.stipend = body.stipend ? Number(body.stipend) : null;
   }
 
-  if (body.appliedOn !== undefined) {
-    data.appliedOn = body.appliedOn ? new Date(body.appliedOn) : null;
+  try {
+    // Try Internship first
+    const updated = await prisma.internship.update({
+      where: { id },
+      data: {
+        ...data,
+        appliedOn: body.appliedOn ? new Date(body.appliedOn) : undefined,
+        followUpOn: body.followUpOn ? new Date(body.followUpOn) : undefined,
+      },
+    });
+    return NextResponse.json(updated);
+  } catch {
+    // Then try Application
+    try {
+      const updated = await prisma.application.update({
+        where: { id },
+        data: {
+          ...data,
+          updatedAt: new Date(),
+        },
+      });
+      return NextResponse.json(updated);
+    } catch (err) {
+      return NextResponse.json({ error: "Record not found" }, { status: 404 });
+    }
   }
-
-  if (body.followUpOn !== undefined) {
-    data.followUpOn = body.followUpOn ? new Date(body.followUpOn) : null;
-  }
-
-  const updated = await prisma.internship.update({
-    where: { id },
-    data,
-  });
-
-  return NextResponse.json(updated, {
-    headers: { "Cache-Control": "no-store" },
-  });
 }
 
 /* ================= DELETE ================= */
@@ -56,16 +67,21 @@ export async function DELETE(
   ctx: { params: Promise<{ id: string }> }
 ) {
   const { id } = await ctx.params;
-
   const session = await getServerSession(authOptions);
+
   if (!session?.user?.email) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  await prisma.internship.delete({ where: { id } });
-
-  return NextResponse.json(
-    { success: true },
-    { headers: { "Cache-Control": "no-store" } }
-  );
+  try {
+    await prisma.internship.delete({ where: { id } });
+    return NextResponse.json({ success: true });
+  } catch {
+    try {
+      await prisma.application.delete({ where: { id } });
+      return NextResponse.json({ success: true });
+    } catch {
+      return NextResponse.json({ error: "Record not found" }, { status: 404 });
+    }
+  }
 }
