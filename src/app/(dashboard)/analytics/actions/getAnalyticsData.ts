@@ -11,44 +11,50 @@ import { StatusPiePoint } from "@/types/analytics";
 export async function getAnalyticsData(
   email: string
 ): Promise<AnalyticsData> {
-  const internships = await prisma.internship.findMany({
-    where: {
-      user: {
-        email,
-      },
-    },
-    select: {
-      status: true,
-      createdAt: true,
-    },
-  });
+  const [internships, extensionApps] = await Promise.all([
+    prisma.internship.findMany({
+      where: { user: { email } },
+      select: { status: true, createdAt: true },
+    }),
+    prisma.application.findMany({
+      where: { user: { email } },
+      select: { status: true, createdAt: true },
+    }),
+  ]);
 
-  const totalApplications = internships.length;
+  // Combine both sources for a complete picture
+  const allEntries = [
+    ...internships,
+    ...extensionApps,
+  ];
+
+  const totalApplications = allEntries.length;
 
   // ---------- NORMALIZED COUNTS ----------
-  const appliedCount = internships.filter(
+  const appliedCount = allEntries.filter(
     (i) => normalizeStatus(i.status) === "APPLIED"
   ).length;
 
-  const interviewCount = internships.filter(
+  const interviewCount = allEntries.filter(
     (i) => normalizeStatus(i.status) === "INTERVIEW"
   ).length;
 
-  const offerCount = internships.filter(
+  const offerCount = allEntries.filter(
     (i) => normalizeStatus(i.status) === "OFFER"
   ).length;
 
-  const rejectedCount = internships.filter(
+  const rejectedCount = allEntries.filter(
     (i) => normalizeStatus(i.status) === "REJECTED"
   ).length;
 
   // ---------- Line Chart ----------
   const dateMap = new Map<string, number>();
 
-  internships.forEach((i) => {
+  allEntries.forEach((i) => {
     const key = formatDate(i.createdAt);
     dateMap.set(key, (dateMap.get(key) || 0) + 1);
   });
+
 
   const lineChart = Array.from(dateMap.entries()).map(
     ([date, count]) => ({ date, count })
@@ -68,7 +74,7 @@ const statusPie: StatusPiePoint[] = [
 
   const weeklyBar = days.map((day) => ({
     day,
-    apps: internships.filter(
+    apps: allEntries.filter(
       (i) =>
         i.createdAt.toLocaleDateString("en-IN", {
           weekday: "short",
