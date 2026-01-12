@@ -1,5 +1,5 @@
 
-console.log("[Internly][Background] Service worker running");
+
 
 let latestApplication = null;
 
@@ -55,7 +55,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
-  // 🔥 FINAL SYNC HANDLER
+  // Final sync handler to send applications to the backend
+
   if (message.type === "SYNC_APPLICATIONS") {
     chrome.storage.local.get(
       ["applications", "authToken", "apiBase"],
@@ -64,13 +65,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         const activeApiBase = apiBase || "http://localhost:3000";
 
         if (!authToken || !applications?.length) {
-          console.warn("[Internly][BG] No token or no applications");
+
           sendResponse({ ok: false });
           return;
         }
 
         try {
-          console.log(`[Internly][BG] Syncing to ${activeApiBase}…`);
+
 
           const resp = await fetch(
             `${activeApiBase}/api/internly/applications/upsert`,
@@ -84,10 +85,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             }
           );
 
-          console.log("[Internly][BG] Sync status:", resp.status);
+
           sendResponse({ ok: true });
         } catch (err) {
-          console.error("[Internly][BG] Sync failed", err);
+
           sendResponse({ ok: false });
         }
       }

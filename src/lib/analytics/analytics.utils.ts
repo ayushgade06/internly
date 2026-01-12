@@ -25,7 +25,7 @@ export function getLast7Days(): string[] {
 }
 
 /**
- * 🔑 IMPORTANT:
+ * Important:
  * Normalizes status strings coming from DB
  * Handles case + whitespace issues
  */

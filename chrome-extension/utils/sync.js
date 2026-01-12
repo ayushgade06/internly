@@ -1,5 +1,6 @@
 // utils/sync.js
-// Phase 6.6 — Token-based Push Sync (FINAL)
+// Token-based Push Sync (FINAL)
+
 
 const API_BASE = "http://localhost:3000/api/internly";
 
@@ -10,11 +11,12 @@ const API_BASE = "http://localhost:3000/api/internly";
 export async function syncApplications(applications) {
   if (!Array.isArray(applications) || applications.length === 0) return;
 
-  // 🔐 Get auth token issued by website
+  // Get the auth token issued by the website
+
   const { authToken } = await chrome.storage.local.get("authToken");
 
   if (!authToken) {
-    console.warn("[Internly][Sync] No auth token — skipping sync");
+
     return;
   }
 
@@ -27,7 +29,8 @@ export async function syncApplications(applications) {
       },
       body: JSON.stringify({
         applications: applications.map((app) => ({
-          applicationId: app.applicationId, // 🔑 NEW
+          applicationId: app.applicationId, 
+
           applicationUrl: app.applicationUrl,
           company: app.company,
           role: app.role,
@@ -42,17 +45,14 @@ export async function syncApplications(applications) {
     });
 
     if (!res.ok) {
-      console.warn(
-        "[Internly][Sync] Push failed:",
-        res.status,
-        await res.text()
-      );
+
       return;
     }
 
-    console.log("[Internly][Sync] Push sync successful");
+
   } catch (err) {
-    console.error("[Internly][Sync] Network error (offline-safe)", err);
-    // ❗ DO NOT throw — offline-first
+
+    // Fail silently to support offline-first behavior
+
   }
 }

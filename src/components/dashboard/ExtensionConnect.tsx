@@ -12,14 +12,14 @@ export default function ExtensionConnect() {
 
       if (!res.ok) {
         const error = await res.json();
-        console.error("Token fetch error:", error);
+
         alert(`Failed to connect: ${error.error || "Please log in first"}`);
         setStatus("error");
         return;
       }
 
       const data = await res.json();
-      console.log("Token received, sending to extension...");
+
 
       window.postMessage(
         {
@@ -30,12 +30,12 @@ export default function ExtensionConnect() {
       );
 
       setStatus("success");
-      alert("✅ Extension connected! You can now use the Chrome extension to save applications.");
+      alert("Extension connected! You can now use the Chrome extension to save applications.");
       
       // Reset status after 3 seconds
       setTimeout(() => setStatus("idle"), 3000);
     } catch (error) {
-      console.error("Extension connection error:", error);
+
       alert("Failed to connect extension. Please try again.");
       setStatus("error");
     }
@@ -54,7 +54,7 @@ export default function ExtensionConnect() {
       } disabled:opacity-50 disabled:cursor-not-allowed`}
     >
       {status === "loading" ? "Connecting..." : 
-       status === "success" ? "✅ Connected" : 
+       status === "success" ? "Connected" : 
        "Connect Chrome Extension"}
     </button>
   );

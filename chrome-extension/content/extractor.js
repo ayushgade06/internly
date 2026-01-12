@@ -1,9 +1,8 @@
-// ===============================
-// Internly – Data Extraction Engine
-// Phase 3 (FINAL)
-// ===============================
+// Internly - Data Extraction Engine
 
-// ---------- Utilities ----------
+
+// Utilities
+
 function safeText(el, maxLen = 300) {
   try {
     if (!el || !el.innerText) return null;
@@ -36,10 +35,12 @@ function titleCase(text) {
   return text.replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-// ---------- Company ----------
+// Company extraction logic
+
 function extractCompany() {
   try {
-    // 1️⃣ Hostname inference (MOST reliable across ATS)
+    // Hostname inference (most reliable)
+
     const host = window.location.hostname.replace("www.", "");
     const brand = host.split(".")[0];
 
@@ -47,7 +48,8 @@ function extractCompany() {
       return titleCase(brand);
     }
 
-    // 2️⃣ Meta fallback
+    // Fallback to meta tags
+
     const meta =
       document.querySelector('meta[property="og:site_name"]') ||
       document.querySelector('meta[name="application-name"]');
@@ -60,10 +62,12 @@ function extractCompany() {
   }
 }
 
-// ---------- Role ----------
+// Role extraction logic
+
 function extractRole() {
   try {
-    // 1️⃣ Headings (best when present)
+    // Check headings (often the most accurate)
+
     const headings = document.querySelectorAll("h1, h2, h3");
 
     for (const h of headings) {
@@ -79,7 +83,8 @@ function extractRole() {
       }
     }
 
-    // 2️⃣ URL slug fallback (CRITICAL for Stripe / Greenhouse / Lever)
+    // URL slug fallback
+
     const path = window.location.pathname;
 
     // Common ATS patterns
@@ -92,7 +97,8 @@ function extractRole() {
       return titleCase(slugMatch[1].replace(/-/g, " "));
     }
 
-    // 3️⃣ Document title (only if not generic)
+    // Fallback to document title
+
     const title = document.title;
     if (title && !isGenericTitle(title)) {
       return title.split("|")[0].trim();
@@ -104,7 +110,8 @@ function extractRole() {
   }
 }
 
-// ---------- Stipend / Salary ----------
+// Stipend and salary extraction logic
+
 function extractStipend() {
   try {
     const text = document.body.innerText.toLowerCase();
@@ -119,7 +126,8 @@ function extractStipend() {
   }
 }
 
-// ---------- Description ----------
+// Description extraction logic
+
 function extractDescription() {
   try {
     const keywords = [
@@ -149,7 +157,8 @@ function extractDescription() {
   }
 }
 
-// ---------- MAIN EXPORT ----------
+// Main entry point for extraction
+
 export function extractApplicationData() {
   try {
     return {

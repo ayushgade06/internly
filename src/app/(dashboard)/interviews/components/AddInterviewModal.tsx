@@ -41,7 +41,7 @@ export default function AddInterviewModal({ onClose, onSaved }: Props) {
 
       if (!res.ok) {
         const err = await res.json();
-        console.error("API error:", err);
+
         throw new Error(err.error || "Failed to save interview");
       }
 

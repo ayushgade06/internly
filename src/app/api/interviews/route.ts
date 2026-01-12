@@ -3,7 +3,8 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
-/* ---------------- GET: fetch interview logs ---------------- */
+// GET: Fetch the list of interview logs for the current user
+
 export async function GET() {
   try {
     const session = await getServerSession(authOptions);
@@ -25,7 +26,7 @@ export async function GET() {
 
     return NextResponse.json(logs);
   } catch (error) {
-    console.error("GET /api/interviews error:", error);
+
     return NextResponse.json(
       { error: "Failed to fetch interview logs" },
       { status: 500 }
@@ -33,7 +34,8 @@ export async function GET() {
   }
 }
 
-/* ---------------- POST: create interview log ---------------- */
+// POST: Create a new interview log entry
+
 export async function POST(req: Request) {
   try {
     const session = await getServerSession(authOptions);
@@ -59,7 +61,8 @@ export async function POST(req: Request) {
         mode,
         outcome,
         experience,
-        date: new Date(date), // ✅ REQUIRED
+        date: new Date(date), // Date is required
+
         user: {
           connect: {
             email: session.user.email,
@@ -70,7 +73,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json(log, { status: 201 });
   } catch (error) {
-    console.error("POST /api/interviews error:", error);
+
     return NextResponse.json(
       { error: "Failed to create interview log" },
       { status: 500 }

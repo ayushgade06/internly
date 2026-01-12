@@ -5,7 +5,8 @@ import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
-/* ================= POST ================= */
+// Handle POST requests to create a new internship application
+
 
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
@@ -58,7 +59,8 @@ export async function POST(req: Request) {
   });
 }
 
-/* ================= GET ================= */
+// Handle GET requests to fetch all internship applications
+
 
 export async function GET() {
   const session = await getServerSession(authOptions);
@@ -78,7 +80,8 @@ export async function GET() {
     }),
   ]);
 
-  // Merge and normalize for the table view
+  // Normalize and combine applications from both sources for the table
+
   const merged = [
     ...internships.map((i) => ({ ...i, source: "manual" })),
     ...extensionApps.map((a) => ({

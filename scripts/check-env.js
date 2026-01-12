@@ -2,7 +2,7 @@
 const fs = require('fs');
 const path = require('path');
 
-console.log('🔍 Checking environment files...\n');
+console.log('Checking environment files...\n');
 
 const envFiles = ['.env.local', '.env'];
 let foundFiles = [];
@@ -11,7 +11,7 @@ envFiles.forEach(file => {
   const filePath = path.join(process.cwd(), file);
   if (fs.existsSync(filePath)) {
     foundFiles.push(file);
-    console.log(`✅ Found: ${file}`);
+    console.log(`Found: ${file}`);
     
     const content = fs.readFileSync(filePath, 'utf8');
     const lines = content.split('\n');
@@ -22,7 +22,7 @@ envFiles.forEach(file => {
         if (url) {
           try {
             const parsed = new URL(url);
-            console.log(`\n📋 DATABASE_URL in ${file}:`);
+            console.log(`\nConnection Details in ${file}:`);
             console.log(`   Protocol: ${parsed.protocol}`);
             console.log(`   Host: ${parsed.hostname}`);
             console.log(`   Port: ${parsed.port || '5432 (default)'}`);
@@ -32,16 +32,16 @@ envFiles.forEach(file => {
             
             // Check for placeholder values
             if (parsed.username === 'username' || parsed.username === 'user') {
-              console.log(`\n⚠️  WARNING: Username appears to be a placeholder!`);
+              console.log(`\nWARNING: Username appears to be a placeholder!`);
               console.log(`   You need to replace '${parsed.username}' with your actual PostgreSQL username`);
             }
             
             if (!parsed.password || parsed.password === 'password') {
-              console.log(`\n⚠️  WARNING: Password appears to be missing or a placeholder!`);
+              console.log(`\nWARNING: Password appears to be missing or a placeholder!`);
               console.log(`   You need to set your actual PostgreSQL password`);
             }
           } catch (e) {
-            console.log(`\n❌ Invalid DATABASE_URL format in ${file}`);
+            console.log(`\nInvalid DATABASE_URL format in ${file}`);
           }
         }
       }
@@ -50,8 +50,8 @@ envFiles.forEach(file => {
 });
 
 if (foundFiles.length === 0) {
-  console.log('❌ No .env files found!');
-  console.log('\n💡 Create a .env.local or .env file with:');
+  console.log('No .env files found!');
+  console.log('\nSolution: Create a .env.local or .env file with:');
   console.log('   DATABASE_URL="postgresql://postgres:YOUR_PASSWORD@localhost:5432/internly?schema=public"');
 } else {
   console.log('\n📝 To fix:');

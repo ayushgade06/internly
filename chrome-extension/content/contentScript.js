@@ -4,8 +4,7 @@
   // Phase 2 + Phase 3 + Phase 5.0
   // ===============================
 
-  console.log("[Internly][Content] Content script loaded");
-  console.log("[Internly][Content] Current URL:", window.location.href);
+
 
   const url = window.location.href.toLowerCase();
   const host = window.location.hostname.toLowerCase();
@@ -23,7 +22,7 @@
   ];
 
   if (BLOCKED_HOSTS.some((h) => host.includes(h))) {
-    console.log("[Internly][Detection] Confidence: 5 → Low (blocked host)");
+
     return;
   }
 
@@ -173,7 +172,8 @@
     const role = extractRole();
     const applicationUrl = window.location.href;
 
-    // 🔑 FIX: composite identity (URL + role)
+    // Use a composite identity (URL + role) to avoid collisions
+
     const applicationId = `${applicationUrl}::${normalize(role)}`;
 
     return {
@@ -238,7 +238,7 @@
 
     hasDetectedSubmission = true;
 
-    console.log("[Internly][Submission] Application submitted detected");
+
 
     chrome.runtime.sendMessage({
       type: "APPLICATION_SUBMITTED",
@@ -262,17 +262,12 @@
       const level =
         confidence >= 60 ? "High" : confidence >= 30 ? "Medium" : "Low";
 
-      console.log(
-        `[Internly][Detection] Confidence: ${confidence} → ${level}`
-      );
+
 
       if (confidence >= 60 && !hasSentApplication) {
         const extractedApplication = extractApplicationData();
 
-        console.log(
-          "[Internly][Extracted Application]",
-          extractedApplication
-        );
+
 
         chrome.runtime.sendMessage({
           type: "APPLICATION_EXTRACTED",

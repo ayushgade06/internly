@@ -3,14 +3,14 @@
 import { prisma } from "@/lib/prisma";
 import { startOfWeek, endOfWeek } from "date-fns";
 
-// ✅ Server-side check
-console.log("DB URL:", process.env.DATABASE_URL);
+// Check environment
 
 export async function getDashboardData(email: string) {
   const start = startOfWeek(new Date(), { weekStartsOn: 1 });
   const end = endOfWeek(new Date(), { weekStartsOn: 1 });
 
-  /* 1️⃣ Applications this week */
+  // Get application count for the current week
+
   const [internshipsThisWeek, extensionAppsThisWeek] = await Promise.all([
     prisma.internship.count({
       where: {
@@ -28,7 +28,8 @@ export async function getDashboardData(email: string) {
 
   const applicationsThisWeek = internshipsThisWeek + extensionAppsThisWeek;
 
-  /* 2️⃣ Upcoming interviews */
+  // Get count of upcoming interviews
+
   const [internshipsInterview, extensionAppsInterview] = await Promise.all([
     prisma.internship.count({
       where: { user: { email }, status: "Interview" },
@@ -40,7 +41,8 @@ export async function getDashboardData(email: string) {
 
   const interviewsUpcoming = internshipsInterview + extensionAppsInterview;
 
-  /* 3️⃣ Offers awaiting response */
+  // Get count of offers waiting for response
+
   const [internshipsOffer, extensionAppsOffer] = await Promise.all([
     prisma.internship.count({
       where: { user: { email }, status: "Offer" },
@@ -52,7 +54,8 @@ export async function getDashboardData(email: string) {
 
   const offersAwaiting = internshipsOffer + extensionAppsOffer;
 
-  /* 4️⃣ Recently applied (Merged) */
+  // Fetch the most recent applications from both tables
+
   const [recentInternships, recentExtensionApps] = await Promise.all([
     prisma.internship.findMany({
       where: { user: { email } },

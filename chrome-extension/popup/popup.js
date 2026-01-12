@@ -17,8 +17,8 @@ const DEFAULT_API_BASE = "http://localhost:3000";
 let currentApiBase = DEFAULT_API_BASE;
 
 /**
- * 🕵️ Detect if the user is currently on an Internly site (localhost or LAN IP)
- * and update the API_BASE accordingly.
+ * Check if the user is currently on an Internly site (localhost or LAN IP)
+ * and update the API_BASE URL accordingly.
  */
 async function getEffectiveApiBase() {
   try {
@@ -32,7 +32,7 @@ async function getEffectiveApiBase() {
       }
     }
   } catch (e) {
-    console.error("[Internly] Origin detection failed", e);
+
   }
   const stored = await chrome.storage.local.get("apiBase");
   return stored.apiBase || DEFAULT_API_BASE;
@@ -43,7 +43,7 @@ async function getEffectiveApiBase() {
 // -------------------------------
 async function ensureAuthToken() {
   currentApiBase = await getEffectiveApiBase();
-  console.log("[Internly] Using API Base:", currentApiBase);
+
 
   const authWarning = document.getElementById("authWarning");
   const loginLink = document.getElementById("loginLink");
@@ -79,14 +79,15 @@ async function ensureAuthToken() {
     await chrome.storage.local.set({ authToken: data.token });
     return data.token;
   } catch (err) {
-    console.warn("[Internly] Auth check failed:", err);
+
     // If we have an edge-case network error, keep existing token but show warning
     authWarning.style.display = stored.authToken ? "none" : "block";
     return stored.authToken || null;
   }
 }
 
-// 🔥 NEW: tell background to sync
+// Notify the background script to start syncing
+
 function triggerBackgroundSync() {
   chrome.runtime.sendMessage({ type: "SYNC_APPLICATIONS" });
 }
@@ -114,12 +115,13 @@ toggleBtn.addEventListener("click", () => {
 document.addEventListener("DOMContentLoaded", async () => {
   statusWrapper.hidden = true;
 
-  console.log("[Internly] Popup loaded, fetching latest app...");
 
-  // 🔥 Non-blocking auth check
+
+  // Perform auth check asynchronously
+
   ensureAuthToken().then(token => {
     if (token) {
-      console.log("[Internly] Auth verified, triggering sync");
+
       triggerBackgroundSync();
     }
   });
@@ -127,18 +129,18 @@ document.addEventListener("DOMContentLoaded", async () => {
   chrome.runtime.sendMessage(
     { type: "GET_LATEST_APPLICATION" },
     (response) => {
-      console.log("[Internly] Latest app response:", response);
+
       const app = response?.application;
       latestApplicationFromPage = app || null;
 
       if (!app && !editingAppId) {
-        console.warn("[Internly] No app detected or stored");
+
         form.hidden = true;
         document.getElementById("emptyState").hidden = false;
         return;
       }
 
-      console.log("[Internly] Showing form for:", app?.company);
+
       form.hidden = false;
       document.getElementById("emptyState").hidden = true;
 
@@ -243,7 +245,7 @@ form.addEventListener("submit", (e) => {
 
     if (existing && !duplicateConfirmed) {
       warningEl.textContent =
-        "⚠ This exact role from this page is already saved. Click Save again to update it.";
+        "This exact role from this page is already saved. Click Save again to update it.";
       warningEl.style.display = "block";
       duplicateConfirmed = true;
       return;
@@ -290,11 +292,11 @@ function loadSavedApplications() {
         </span><br/>
         <span>Saved: ${new Date(app.savedAt).toLocaleDateString()}</span>
         <div class="actions">
-          <button class="edit-btn">✏️ Edit</button>
-          <button class="delete-btn">🗑️ Delete</button>
+          <button class="edit-btn">Edit</button>
+          <button class="delete-btn">Delete</button>
           ${
             app.status !== "Applied"
-              ? `<button class="mark-applied-btn">✔ Mark as Applied</button>`
+              ? `<button class="mark-applied-btn">Mark as Applied</button>`
               : ""
           }
         </div>

@@ -9,7 +9,8 @@ import { Pencil, Trash2, FileText } from "lucide-react";
 
 const STATUSES = ["Applied", "Interview", "Offer", "Accepted", "Rejected"];
 
-/* ---------------- Status styles ---------------- */
+// Status-specific styling
+
 
 const STATUS_STYLES: Record<string, string> = {
   Applied: "bg-blue-500/10 text-blue-700",
@@ -19,7 +20,8 @@ const STATUS_STYLES: Record<string, string> = {
   Rejected: "bg-red-500/10 text-red-700",
 };
 
-/* ================= Page ================= */
+// Main internships management page
+
 
 export default function InternshipsPage() {
   const [internships, setInternships] = useState<Internship[]>([]);
@@ -43,7 +45,7 @@ export default function InternshipsPage() {
         const data: Internship[] = await res.json();
         setInternships(data);
       } catch (err) {
-        console.error(err);
+
       } finally {
         setIsLoading(false);
       }
@@ -252,7 +254,8 @@ export default function InternshipsPage() {
   );
 }
 
-/* ---------------- Inline Status Dropdown ---------------- */
+// Component for updating application status in real-time
+
 
 function InlineStatusDropdown({
   internship,

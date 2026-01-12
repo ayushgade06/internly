@@ -28,7 +28,7 @@ export default function InterviewsPage() {
       const data = await res.json();
       setLogs(data);
     } catch (err) {
-      console.error("Failed to fetch interview logs", err);
+
     } finally {
       setLoading(false);
     }
@@ -101,7 +101,8 @@ export default function InterviewsPage() {
         <EditInterviewModal
           interview={editing}
           onClose={() => setEditing(null)}
-          onSave={() => {          // ✅ FIXED
+          onSave={() => {
+
             setEditing(null);
             fetchLogs();
           }}
