@@ -20,7 +20,7 @@ export async function GET(req: Request) {
 
   const token = jwt.sign(
     {
-      email: session.user.email,
+      email: session.user.email.toLowerCase(),
     },
     process.env.INTERNLY_JWT_SECRET!,
     {

@@ -64,15 +64,25 @@ export default function InternshipsPage() {
     );
   };
 
-  const handleDelete = async (id: string) => {
-    const ok = window.confirm("Delete this internship?");
+  const handleDelete = async (id: string, item: Internship) => {
+    const ok = window.confirm(`Delete "${item.company}"?`);
     if (!ok) return;
+
+    // Proactively notify the extension if it's an extension application
+    if (item.source === "extension" && item.applicationId) {
+      window.postMessage({
+        type: "DELETE_APPLICATION",
+        applicationId: item.applicationId
+      }, "*");
+    }
 
     const res = await fetch(`/api/internships/${id}`, {
       method: "DELETE",
     });
 
-    if (!res.ok) {
+    // If it's 404, it might have been already deleted by the extension's sync
+    // which was triggered by our message above. This is fine.
+    if (!res.ok && res.status !== 404) {
       alert("Delete failed");
       return;
     }
@@ -202,7 +212,7 @@ export default function InternshipsPage() {
                         </button>
 
                         <button
-                          onClick={() => handleDelete(item.id)}
+                          onClick={() => handleDelete(item.id, item)}
                           className="p-2 rounded-lg hover:bg-red-50 text-red-600"
                         >
                           <Trash2 size={16} />

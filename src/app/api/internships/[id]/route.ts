@@ -18,6 +18,8 @@ export async function PATCH(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const email = session.user.email.toLowerCase();
+
   const body = await req.json();
   const data: Record<string, any> = {};
 
@@ -73,15 +75,28 @@ export async function DELETE(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const email = session.user.email.toLowerCase();
+
   try {
-    await prisma.internship.delete({ where: { id } });
-    return NextResponse.json({ success: true });
-  } catch {
-    try {
+    // First, try to find it in the Application table to see if it's an extension record
+    const app = await prisma.application.findUnique({
+      where: { id },
+      select: { applicationId: true }
+    });
+
+    if (app) {
       await prisma.application.delete({ where: { id } });
-      return NextResponse.json({ success: true });
-    } catch {
-      return NextResponse.json({ error: "Record not found" }, { status: 404 });
+      return NextResponse.json({ 
+        success: true, 
+        applicationId: app.applicationId,
+        source: "extension" 
+      });
     }
+
+    // If not in Application, it must be an Internship record
+    await prisma.internship.delete({ where: { id } });
+    return NextResponse.json({ success: true, source: "manual" });
+  } catch (err) {
+    return NextResponse.json({ error: "Record not found or delete failed" }, { status: 404 });
   }
 }

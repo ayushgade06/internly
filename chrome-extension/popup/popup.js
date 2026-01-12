@@ -155,6 +155,13 @@ document.addEventListener("DOMContentLoaded", async () => {
       description.value = app.description || "";
     }
   );
+
+  // Refresh list if storage changes (e.g. deletion from website)
+  chrome.storage.onChanged.addListener((changes) => {
+    if (changes.applications && showingSaved) {
+      loadSavedApplications();
+    }
+  });
 });
 
 // -------------------------------
@@ -179,8 +186,18 @@ function updateApplicationStatus(applicationId) {
 }
 
 // -------------------------------
-function deleteApplication(applicationId) {
+async function deleteApplication(applicationId) {
   if (!confirm("Delete this application?")) return;
+
+  // Notify background to delete from server
+  try {
+    await chrome.runtime.sendMessage({
+      type: "DELETE_REMOTE_APPLICATION",
+      applicationId: applicationId,
+    });
+  } catch (err) {
+    // Background might be inactive or error
+  }
 
   chrome.storage.local.get(["applications"], (res) => {
     const apps = (res.applications || []).filter(
@@ -221,6 +238,7 @@ form.addEventListener("submit", (e) => {
       createdAt: existing?.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       source: "extension",
+      synced: existing?.synced || false, // Default to false for new or updated items
       status: editingAppId
         ? statusSelect.value
         : existing?.status || "Saved",

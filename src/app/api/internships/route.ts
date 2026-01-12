@@ -15,6 +15,8 @@ export async function POST(req: Request) {
     return new NextResponse("Unauthorized", { status: 401 });
   }
 
+  const email = session.user.email.toLowerCase();
+
   const {
     role,
     company,
@@ -31,10 +33,10 @@ export async function POST(req: Request) {
   }
 
   const user = await prisma.user.upsert({
-    where: { email: session.user.email },
+    where: { email },
     update: {},
     create: {
-      email: session.user.email,
+      email,
       name: session.user.name,
       image: session.user.image,
     },
@@ -61,7 +63,6 @@ export async function POST(req: Request) {
 
 // Handle GET requests to fetch all internship applications
 
-
 export async function GET() {
   const session = await getServerSession(authOptions);
 
@@ -69,13 +70,15 @@ export async function GET() {
     return new NextResponse("Unauthorized", { status: 401 });
   }
 
+  const email = session.user.email.toLowerCase();
+
   const [internships, extensionApps] = await Promise.all([
     prisma.internship.findMany({
-      where: { user: { email: session.user.email } },
+      where: { user: { email } },
       orderBy: { appliedOn: "desc" },
     }),
     prisma.application.findMany({
-      where: { user: { email: session.user.email } },
+      where: { user: { email } },
       orderBy: { createdAt: "desc" },
     }),
   ]);
@@ -86,9 +89,10 @@ export async function GET() {
     ...internships.map((i) => ({ ...i, source: "manual" })),
     ...extensionApps.map((a) => ({
       id: a.id,
+      applicationId: a.applicationId,
       role: a.role,
       company: a.company,
-      location: "Remote (Detected)", // Or placeholder
+      location: "Remote (Detected)", 
       status: a.status,
       stipend: a.stipend,
       appliedOn: a.createdAt,

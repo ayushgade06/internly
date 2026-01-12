@@ -61,19 +61,47 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     chrome.storage.local.get(
       ["applications", "authToken", "apiBase"],
       async (res) => {
-        const { applications, authToken, apiBase } = res;
+        const { applications: localApps, authToken, apiBase } = res;
         const activeApiBase = apiBase || "http://localhost:3000";
 
-        if (!authToken || !applications?.length) {
-
+        if (!authToken) {
           sendResponse({ ok: false });
           return;
         }
 
         try {
+          // 1. PULL: Get latest from server to handle deletions on website
+          const listResp = await fetch(`${activeApiBase}/api/internly/applications/list`, {
+            headers: { Authorization: `Bearer ${authToken}` },
+          });
 
+          if (listResp.ok) {
+            const { applications: serverApps } = await listResp.json();
+            const serverMap = new Map(serverApps.map(app => [app.applicationId, app]));
+            
+            // Identify what to keep locally:
+            const updatedLocalApps = (localApps || []).filter(local => {
+               const onServer = serverMap.has(local.applicationId);
+               
+               // If it's NOT on server, but we previously synced it, 
+               // it means the Website must have deleted it.
+               if (!onServer && local.source === "extension" && local.synced === true) {
+                 return false; 
+               }
+               return true;
+            });
 
-          const resp = await fetch(
+            // Update local storage with filtered list
+            if (updatedLocalApps.length !== (localApps || []).length) {
+              await chrome.storage.local.set({ applications: updatedLocalApps });
+            }
+          }
+
+          // 2. PUSH: Send current local state to server
+          const { applications: currentLocal } = await chrome.storage.local.get("applications");
+          const toPush = currentLocal || [];
+          
+          const pushResp = await fetch(
             `${activeApiBase}/api/internly/applications/upsert`,
             {
               method: "POST",
@@ -81,19 +109,68 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 "Content-Type": "application/json",
                 Authorization: `Bearer ${authToken}`,
               },
-              body: JSON.stringify({ applications }),
+              body: JSON.stringify({ applications: toPush }),
             }
           );
 
+          if (pushResp.ok) {
+            // Mark all pushed apps as synced: true
+            const finalized = toPush.map(app => ({ ...app, synced: true }));
+            await chrome.storage.local.set({ applications: finalized });
+          }
 
           sendResponse({ ok: true });
         } catch (err) {
-
           sendResponse({ ok: false });
         }
       }
     );
 
+    return true;
+  }
+
+  // Delete from server (triggered by extension popup)
+  if (message.type === "DELETE_REMOTE_APPLICATION") {
+    chrome.storage.local.get(["authToken", "apiBase"], async (res) => {
+      const { authToken, apiBase } = res;
+      const activeApiBase = apiBase || "http://localhost:3000";
+
+      if (!authToken) {
+        sendResponse({ ok: false, error: "No auth token" });
+        return;
+      }
+
+      try {
+        const resp = await fetch(
+          `${activeApiBase}/api/internly/applications/delete?applicationId=${encodeURIComponent(
+            message.applicationId
+          )}`,
+          {
+            method: "DELETE",
+            headers: {
+              Authorization: `Bearer ${authToken}`,
+            },
+          }
+        );
+
+        const data = await resp.json();
+        sendResponse({ ok: resp.ok, data });
+      } catch (err) {
+        sendResponse({ ok: false, error: err.message });
+      }
+    });
+    return true;
+  }
+
+  // Remove an application from local storage when deleted on the website
+  if (message.type === "DELETE_LOCAL_APPLICATION") {
+    chrome.storage.local.get(["applications"], (res) => {
+      const apps = res.applications || [];
+      const updated = apps.filter((a) => a.applicationId !== message.applicationId);
+      chrome.storage.local.set({ applications: updated }, () => {
+        sendResponse({ ok: true });
+      });
+    });
     return true;
   }
 

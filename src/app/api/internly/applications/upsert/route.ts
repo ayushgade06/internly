@@ -17,27 +17,31 @@ export async function POST(req: Request) {
       token,
       process.env.INTERNLY_JWT_SECRET!
     ) as { email: string };
+    payload.email = payload.email.toLowerCase();
   } catch {
     return NextResponse.json({ error: "Invalid token" }, { status: 401 });
   }
 
   const body = await req.json();
-  const applications = body.applications;
+  const applications = body.applications || [];
 
-  if (!Array.isArray(applications) || applications.length === 0) {
+  if (!Array.isArray(applications)) {
     return NextResponse.json(
-      { error: "Invalid applications payload" },
+      { error: "Invalid applications payload (must be an array)" },
       { status: 400 }
     );
   }
 
   // Ensure user exists
+  const email = payload.email;
   const user = await prisma.user.upsert({
-    where: { email: payload.email },
+    where: { email },
     update: {},
-    create: { email: payload.email },
+    create: { email },
   });
 
+  const receivedIds = (applications as any[]).map(a => a.applicationId).filter(Boolean);
+  console.log(`[Sync] User: ${email}, Received: ${receivedIds.length} apps`);
   const results = [];
 
   for (const app of applications) {
@@ -59,8 +63,8 @@ export async function POST(req: Request) {
         stipend: finalStipend,
         description: app.description,
         status: app.status,
-        source: app.source,
-        updatedAt: new Date(app.updatedAt),
+        source: "extension",
+        updatedAt: new Date(app.updatedAt || new Date()),
       },
       create: {
         applicationId: app.applicationId,
@@ -70,16 +74,34 @@ export async function POST(req: Request) {
         stipend: finalStipend,
         description: app.description,
         status: app.status,
-        source: app.source,
-        createdAt: new Date(app.createdAt),
-        updatedAt: app.updatedAt
-        ? new Date(app.updatedAt)
-        : new Date(),
+        source: "extension",
+        createdAt: new Date(app.createdAt || new Date()),
+        updatedAt: new Date(app.updatedAt || new Date()),
         userId: user.id,
       },
     });
 
     results.push(saved);
+  }
+
+  // Delete records NOT in the push payload (Full Sync)
+  if (receivedIds.length === 0) {
+    console.log(`[Sync] Cleaning up all extension records for ${user.id}`);
+    await prisma.application.deleteMany({
+      where: {
+        userId: user.id,
+        source: "extension"
+      }
+    });
+  } else {
+    console.log(`[Sync] Cleaning up missing records for ${user.id}`);
+    await prisma.application.deleteMany({
+      where: {
+        userId: user.id,
+        source: "extension",
+        applicationId: { notIn: receivedIds }
+      }
+    });
   }
 
   const origin = req.headers.get("origin");

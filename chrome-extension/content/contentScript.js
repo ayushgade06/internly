@@ -298,4 +298,27 @@
   });
 
   observer.observe(document.body, { childList: true, subtree: true });
+
+  // Handle messages from the website for real-time synchronization
+  window.addEventListener("message", (event) => {
+    const data = event.data;
+    if (data && data.type === "DELETE_APPLICATION" && data.applicationId) {
+      const appId = data.applicationId;
+      
+      // Update local storage directly for immediate UI response
+      chrome.storage.local.get(["applications"], (res) => {
+        const apps = res.applications || [];
+        const filtered = apps.filter((a) => a.applicationId !== appId);
+        if (apps.length !== filtered.length) {
+          chrome.storage.local.set({ applications: filtered });
+        }
+      });
+
+      // Notify background to handle any remote sync if necessary
+      chrome.runtime.sendMessage({
+        type: "DELETE_LOCAL_APPLICATION",
+        applicationId: appId
+      });
+    }
+  });
 })();

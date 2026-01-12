@@ -15,6 +15,7 @@ function fromDateInputValue(value: string) {
 
 export type Internship = {
   id: string;
+  applicationId?: string; // For extension sync
   role: string;
   company: string;
   location: string;
@@ -23,6 +24,7 @@ export type Internship = {
   appliedOn: string | null;
   followUpOn?: string | null;
   notes?: string | null;
+  source?: string; // manual or extension
 };
 
 type Props = {
