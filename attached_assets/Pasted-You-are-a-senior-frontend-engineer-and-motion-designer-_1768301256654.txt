@@ -1,0 +1,134 @@
+You are a senior frontend engineer and motion designer with experience building production-grade SaaS applications.
+
+GOAL:
+Redesign the Internly web application UI to look absolutely modern, premium, and startup-ready, while keeping ALL backend logic, APIs, database schema, and business logic completely unchanged.
+
+========================
+STRICT NON-NEGOTIABLE RULES
+========================
+- DO NOT modify any backend code, API routes, Prisma logic, database models, auth flow, or server-side logic.
+- DO NOT change existing props, function signatures, API responses, or data-fetching logic.
+- DO NOT rename backend-facing variables or break contracts.
+- UI and UX changes ONLY.
+- If a change risks breaking functionality, DO NOT do it.
+
+========================
+TECH STACK CONSTRAINTS
+========================
+- Frontend: Next.js (App Router), React, TypeScript
+- Styling: Tailwind CSS (preferred)
+- Animations: GSAP (primary), optional Framer Motion
+- Keep components reusable, typed, and clean
+- No experimental or unstable libraries
+
+========================
+FILE & FOLDER RESTRUCTURING (FRONTEND ONLY)
+========================
+Restructure the frontend for a production-grade SaaS application WITHOUT affecting backend logic.
+
+Use a clean, scalable structure like:
+
+/app
+  /(dashboard)
+    /page.tsx
+    /loading.tsx
+  /(auth)
+    /login
+    /register
+
+/components
+  /ui
+    Button.tsx
+    Card.tsx
+    Badge.tsx
+    Modal.tsx
+    Table.tsx
+  /layout
+    Sidebar.tsx
+    Topbar.tsx
+    PageWrapper.tsx
+  /dashboard
+    StatCard.tsx
+    ActivityTimeline.tsx
+    StatusFilter.tsx
+
+/hooks
+  useGSAP.ts
+  usePrefersReducedMotion.ts
+
+/styles
+  globals.css
+
+/lib
+  animation.ts   // GSAP timelines & helpers (UI ONLY)
+
+/types
+  ui.ts          // UI-only types (NO backend types)
+
+RULES FOR RESTRUCTURING:
+- Move ONLY frontend JSX, styling, and animation logic.
+- Do NOT move or alter API calls, server actions, or backend imports.
+- Shared UI components must be reusable and dumb (presentation-focused).
+- Page-level components handle layout only, not business logic.
+
+========================
+UI / UX OBJECTIVES
+========================
+1. Modern SaaS Dashboard Look:
+   - Clean spacing, strong typography hierarchy
+   - Card-based layouts with soft shadows & rounded corners
+   - Subtle gradients and tasteful glassmorphism
+   - Fully dark & light mode friendly
+
+2. High-Quality GSAP Animations:
+   - Page load animations (fade + slight translate)
+   - Staggered card entrance animations using GSAP timelines
+   - Hover micro-interactions (scale, elevation, glow)
+   - Smooth section transitions
+   - Scroll-trigger animations ONLY when they improve clarity
+
+3. Usability Improvements (UI ONLY):
+   - Clear visual grouping of information
+   - Obvious primary vs secondary actions
+   - Polished empty states and skeleton loaders
+   - Subtle feedback animations (success, error, focus, hover)
+
+4. Dashboard Enhancements:
+   - Animated stat cards (count-up / reveal)
+   - Timeline-style recent activity
+   - Smooth filter & status transitions
+   - Elegant tables with row hover animations and soft separators
+
+========================
+ANIMATION QUALITY BAR
+========================
+Refine animations to feel premium and minimal:
+- Shorter durations
+- Use ease-out, expo, or power3 easing
+- Add subtle depth and parallax
+- Remove anything flashy or gimmicky
+
+Animations should feel:
+Apple / Linear / Vercel level — smooth, intentional, and restrained.
+
+========================
+PERFORMANCE & ACCESSIBILITY
+========================
+- Animations must be lightweight and smooth
+- Respect prefers-reduced-motion
+- No layout shift or jank
+- GSAP timelines must be cleaned up on unmount
+- No unnecessary re-renders
+
+========================
+DELIVERABLE
+========================
+- Update ONLY frontend components, styles, animations, and file structure
+- Keep application behavior 100% identical
+- Briefly explain:
+  - UI improvements made
+  - Animation patterns used
+  - File structure decisions
+
+Think like a designer + engineer building a real startup product.
+Make Internly look like something users would proudly share on Twitter or LinkedIn.
