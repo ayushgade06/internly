@@ -12,18 +12,20 @@ export default async function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen p-4 md:p-8 space-y-8 max-w-7xl mx-auto">
-      <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-          <p className="text-slate-500 dark:text-slate-400 mt-1">
-            Welcome back, <span className="text-slate-900 dark:text-slate-200 font-medium">{session.user?.email}</span>
-          </p>
-        </div>
-        <LogoutButton />
-      </header>
+    <div className="min-h-screen bg-slate-950 text-slate-100 p-6 md:p-12">
+      <div className="max-w-7xl mx-auto space-y-10">
+        <header className="flex items-center justify-between border-b border-slate-800 pb-8">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight text-white">Dashboard</h1>
+            <p className="text-slate-400 mt-2 text-sm">
+              Logged in as <span className="text-slate-200 font-medium">{session.user?.email}</span>
+            </p>
+          </div>
+          <LogoutButton />
+        </header>
 
-      <DashboardClient />
+        <DashboardClient />
+      </div>
     </div>
   );
 }

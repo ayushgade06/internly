@@ -9,10 +9,10 @@ export function GoogleLoginButton() {
 
   useEffect(() => {
     gsap.from(buttonRef.current, {
-      y: 10,
+      y: 5,
       opacity: 0,
-      duration: 0.6,
-      delay: 0.4,
+      duration: 0.5,
+      delay: 0.2,
       ease: "power2.out"
     });
   }, []);
@@ -21,7 +21,7 @@ export function GoogleLoginButton() {
     <button
       ref={buttonRef}
       onClick={() => signIn("google")}
-      className="w-full flex items-center justify-center gap-3 px-6 py-3 bg-white text-slate-900 border border-slate-200 rounded-xl font-medium hover:bg-slate-50 hover:scale-[1.01] transition-all duration-200 shadow-sm"
+      className="w-full flex items-center justify-center gap-3 px-6 py-2.5 bg-slate-800 text-slate-100 border border-slate-700 rounded-md font-medium hover:bg-slate-700 transition-colors duration-200"
     >
       <svg className="w-5 h-5" viewBox="0 0 24 24">
         <path
@@ -41,7 +41,7 @@ export function GoogleLoginButton() {
           fill="#EA4335"
         />
       </svg>
-      Sign in with Google
+      Continue with Google
     </button>
   );
 }
